@@ -44,7 +44,7 @@ import Nexus_64
 import Coordinates_64
 import Display_64
 
-ser = serial.Serial("/dev/serial0",baudrate=19200)
+ser = serial.Serial("/dev/ttyAMA2",baudrate=19200)
 
 azSteps = altSteps=0
 trackFracAZ = trackFracALT = 0.0
