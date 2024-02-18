@@ -1,0 +1,8 @@
+#!/bin/bash
+
+[Desktop Entry]
+Type=Application
+Name=scopedog
+Terminal=true
+Exec=bash -c "/home/scopedog/venv-scopedog/bin/python /home/scopedog/scopedogmk3.py"
+Name[en_GB]=scopedog.desktop
