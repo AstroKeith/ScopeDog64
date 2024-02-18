@@ -1,4 +1,4 @@
-rial0#!/usr/bin/env python3
+#!/usr/bin/env python3
 
 # Program to implement a combined ScopeDog & eFinder (electronic finder) on motorised Alt Az telescopes
 # Copyright (C) 2022 Keith Venables.
