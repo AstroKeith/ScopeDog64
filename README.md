@@ -12,6 +12,6 @@ Full details at [
 ](https://astrokeith.com/equipment/scopedog/)https://astrokeith.com/equipment/scopedog/
 
 ## Operation
-Refer to system descritpion at  [
+Refer to system description at  [
 ](https://astrokeith.com/equipment/scopedog/)https://astrokeith.com/equipment/scopedog/
 
