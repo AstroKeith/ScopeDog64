@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+rial0#!/usr/bin/env python3
 
 # Program to implement a combined ScopeDog & eFinder (electronic finder) on motorised Alt Az telescopes
 # Copyright (C) 2022 Keith Venables.
@@ -44,7 +44,7 @@ import Nexus_64
 import Coordinates_64
 import Display_64
 
-ser = serial.Serial("/dev/ttyAMA2",baudrate=19200)
+ser = serial.Serial("/dev/serial0",baudrate=19200)
 
 azSteps = altSteps=0
 trackFracAZ = trackFracALT = 0.0
