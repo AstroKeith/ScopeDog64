@@ -15,10 +15,9 @@ Full details at [
 - Use Raspberry Pi Imager to create a fresh 32gb sdCard with the latest 64bit Bookworm OS. Makes sure username is 'scopedog'
 - Run the install.sh script. This will install all dependencies (Phidget support, astrometry.net, camera drivers, webpage server, etc) plus the ScopeDog specific code.
 - ScopeDog requires a bespoke handbox (refer to [
-](https://astrokeith.com/equipment/scopedog/scopedog-mk3-hand-box/)https://astrokeith.com/equipment/scopedog/scopedog-mk3-hand-box/
-
+](https://astrokeith.com/equipment/scopedog/)https://astrokeith.com/equipment/scopedog/
 ## Operation
 Refer to system description at  [
 ](https://astrokeith.com/equipment/scopedog/)https://astrokeith.com/equipment/scopedog/
 
-https://astrokeith.com/equipment/scopedog/scopedog-mk3-hand-box.html
+
