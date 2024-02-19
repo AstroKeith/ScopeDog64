@@ -16,6 +16,8 @@ Full details at [
 - Run the install.sh script. This will install all dependencies (Phidget support, astrometry.net, camera drivers, webpage server, etc) plus the ScopeDog specific code.
 - ScopeDog requires a bespoke handbox (refer to [
 ](https://astrokeith.com/equipment/scopedog/scopedog-mk3-hand-box)https://astrokeith.com/equipment/scopedog/scopedog-mk3-hand-box
+- The code for the hand box Pico is main_eF1_?.py
+  
 ## Operation
 Refer to system description at  [
 ](https://astrokeith.com/equipment/scopedog/)https://astrokeith.com/equipment/scopedog/
