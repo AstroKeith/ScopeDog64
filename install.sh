@@ -39,6 +39,7 @@ python -m venv /home/scopedog/venv-scopedog --system-site-packages
 echo "ScopeDog virtual environment setup"
 
 venv-scopedog/bin/python venv-scopedog/bin/pip install astropy pyfits
+venv-scopedog/bin/python venv-scopedog/bin/pip install adafruit-circuitpython-ina260
 
 # Lets install the astrometry.net package
 cd $HOME
@@ -118,6 +119,7 @@ sudo raspi-config nonint do_vnc 0
 sudo raspi-config nonint do_hostname scopedogmk3
 sudo raspi-config nonint do_blanking 1
 sudo raspi-config nonint do_ssh 0
+sudo raspi-config nonint do_i2c 0
 sudo raspi-config nonint do_serial_hw 0
 sudo raspi-config nonint do_serial_cons 1
 sudo raspi-config nonint do_vnc_resolution 1920x1080
