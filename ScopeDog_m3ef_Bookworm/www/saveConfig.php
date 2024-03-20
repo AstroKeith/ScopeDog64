@@ -7,9 +7,6 @@
 <body bgcolor="#000000" text="#FFFFFF">
 <?php
 $html = "";
-//$Latitude1 = $_POST['1_Latitude:'];
-//$Longitude1 = $_POST['1_Longitude:'];
-
 $Az_Gear_Ratio1 = $_POST['1_Az_Gear_Ratio:'];
 $Alt_Gear_Ratio1 = $_POST['1_Alt_Gear_Ratio:'];
 $Alt_Gear1 = $_POST['1_Alt_Gear:'];
@@ -21,14 +18,10 @@ $SlewSpeedSlow1 = $_POST['1_SlewSpeedSlow:'];
 $SlewSpeedMed1 = $_POST['1_SlewSpeedMed:'];
 $AutoStart1 = $_POST['1_AutoStart:'];
 $Backlash1 = $_POST['1_Backlash:'];
-//$f_Ratio1 = $_POST['1_f_Ratio:'];
-//$spiral_Delay1 = $_POST['1_spiral_Delay:'];
 $flip_AltF1 = $_POST['1_flip_AltF:'];
 $flip_AltS1 = $_POST['1_flip_AltS:'];
 $flip_AzF1 = $_POST['1_flip_AzF:'];
 $flip_AzS1 = $_POST['1_flip_AzS:'];
-//$Latitude2 = $_POST['2_Latitude:'];
-//$Longitude2 = $_POST['2_Longitude:'];
 $Az_Gear_Ratio2 = $_POST['2_Az_Gear_Ratio:'];
 $Alt_Gear_Ratio2 = $_POST['2_Alt_Gear_Ratio:'];
 $Alt_Gear2 = $_POST['2_Alt_Gear:'];
@@ -40,8 +33,6 @@ $SlewSpeedSlow2 = $_POST['2_SlewSpeedSlow:'];
 $SlewSpeedMed2 = $_POST['2_SlewSpeedMed:'];
 $AutoStart2 = $_POST['2_AutoStart:'];
 $Backlash2 = $_POST['2_Backlash:'];
-//$f_Ratio2 = $_POST['2_f_Ratio:'];
-//$spiral_Delay2 = $_POST['2_spiral_Delay:'];
 $flip_AltF2 = $_POST['2_flip_AltF:'];
 $flip_AltS2 = $_POST['2_flip_AltS:'];
 $flip_AzF2 = $_POST['2_flip_AzF:'];
@@ -49,10 +40,6 @@ $flip_AzS2 = $_POST['2_flip_AzS:'];
 $fp = fopen("/home/scopedog/ScopeDog.config", "w") or die("Unable to open file!");
 $txt = "1_AutoStart: " . $AutoStart1 . "\n";
 fwrite($fp, $txt);
-//$txt = "1_Latitude: " . $Latitude1 . "\n";
-//fwrite($fp, $txt);
-//$txt = "1_Longitude: " . $Longitude1 . "\n";
-//fwrite($fp, $txt);
 $txt = "1_Az_Gear_Ratio: " . $Az_Gear_Ratio1 . "\n";
 fwrite($fp, $txt);
 $txt = "1_Alt_Gear_Ratio: " . $Alt_Gear_Ratio1 . "\n";
@@ -73,10 +60,6 @@ $txt = "1_SlewSpeedMed: " . $SlewSpeedMed1 . "\n";
 fwrite($fp, $txt);
 $txt = "1_Backlash: " . $Backlash1 . "\n";
 fwrite($fp, $txt);
-//$txt = "1_f_Ratio: " . $f_Ratio1 . "\n";
-//fwrite($fp, $txt);
-//$txt = "1_spiral_Delay: " . $spiral_Delay1 . "\n";
-//fwrite($fp, $txt);
 $txt = "1_flip_AltF: " . $flip_AltF1 . "\n";
 fwrite($fp, $txt);
 $txt = "1_flip_AltS: " . $flip_AltS1 . "\n";
@@ -87,10 +70,6 @@ $txt = "1_flip_AzS: " . $flip_AzS1 . "\n";
 fwrite($fp, $txt);
 $txt = "2_AutoStart: " . $AutoStart2 . "\n";
 fwrite($fp, $txt);
-//$txt = "2_Latitude: " . $Latitude2 . "\n";
-//fwrite($fp, $txt);
-//$txt = "2_Longitude: " . $Longitude2 . "\n";
-//fwrite($fp, $txt);
 $txt = "2_Az_Gear_Ratio: " . $Az_Gear_Ratio2 . "\n";
 fwrite($fp, $txt);
 $txt = "2_Alt_Gear_Ratio: " . $Alt_Gear_Ratio2 . "\n";
@@ -111,10 +90,6 @@ $txt = "2_SlewSpeedMed: " . $SlewSpeedMed2 . "\n";
 fwrite($fp, $txt);
 $txt = "2_Backlash: " . $Backlash2 . "\n";
 fwrite($fp, $txt);
-//$txt = "2_f_Ratio: " . $f_Ratio2 . "\n";
-//fwrite($fp, $txt);
-//$txt = "2_spiral_Delay: " . $spiral_Delay2 . "\n";
-//fwrite($fp, $txt);
 $txt = "2_flip_AltF: " . $flip_AltF2 . "\n";
 fwrite($fp, $txt);
 $txt = "2_flip_AltS: " . $flip_AltS2 . "\n";
@@ -166,31 +141,15 @@ while(!feof($fp)) {
 			$html .= "<tr><td>$sdType</td><td><input name='$sdType' type='text' value='$sdValue'></td><td>";
 			$html .= " Altitude backlash in arcmin";
 			break;
-//		case "1_f_Ratio:":
-//			$html .= "<tr><td>$sdType</td><td><input name='$sdType' type='text' value='$sdValue' ></td><td>";
-//			$html .= " This is your mirror's f_ratio";
-//			break;
-//		case "1_spiral_Delay:":
-//			$html .= "<tr><td>$sdType</td><td><input name='$sdType' type='text' value='$sdValue' ></td><td>";
-//			$html .= " This is length of delay of each spiral move in seconds";
-//			break;
-// 		case "Latitude:":
-// 			$html .= "<tr><td>$sdType</td><td><input name='$sdType' type='text' value='$sdValue' readonly=''></td><td>";
-// 			$html .= " This is set by GPS";
-// 			break;
-// 		case "Longitude:":
-// 			$html .= "<tr><td>$sdType</td><td><input name='$sdType' type='text' value='$sdValue' readonly=''></td><td>";
-// 			$html .= " This is set by GPS";
-// 			break;
 		case "1_Az_Gear_Ratio:":
 			$html .= "<tr><td>$sdType</td><td><input type=text Name=$sdType Value=$sdValue ></td><td>";
-			$html .= " Number of teeth on belt divided by Number of teeth on drive gear";
+			$html .= " ver mk3_14 Final Drive Ratio, ver mk3_15 Total Drive Ratio";
 			$azVelStart= ($sdValue/360)*394285.71428573681633;
 			break;
 		case "1_Alt_Gear_Ratio:":
 			$altVelStart=($sdValue/360)*394285.71428573681633;
 			$html .= "<tr><td>$sdType</td><td><input type=text Name=$sdType Value=$sdValue ></td><td>";
-			$html .= " Number of teeth on belt divided by Number of teeth on drive gear";
+			$html .= " ver mk3_14 Final Drive Ratio, ver mk3_15 Total Drive Ratio";
 			break;
 		case "1_Alt_Gear:":
 			$lCheck="";
@@ -288,31 +247,15 @@ while(!feof($fp)) {
 			$html .= "<tr><td>$sdType</td><td><input name='$sdType' type='text' value='$sdValue' ></td><td>";
 			$html .= " Altitude backlash in arcmin";
 			break;
-//		case "2_f_Ratio:":
-//			$html .= "<tr><td>$sdType</td><td><input name='$sdType' type='text' value='$sdValue' ></td><td>";
-//			$html .= " This is your mirror's f_ratio";
-//			break;
-//		case "2_spiral_Delay:":
-//			$html .= "<tr><td>$sdType</td><td><input name='$sdType' type='text' value='$sdValue' ></td><td>";
-//			$html .= " This is length of delay of each spiral move in seconds";
-//			break;
-// 		case "Latitude:":
-// 			$html .= "<tr><td>$sdType</td><td><input name='$sdType' type='text' value='$sdValue' readonly=''></td><td>";
-// 			$html .= " This is set by GPS";
-// 			break;
-// 		case "Longitude:":
-// 			$html .= "<tr><td>$sdType</td><td><input name='$sdType' type='text' value='$sdValue' readonly=''></td><td>";
-// 			$html .= " This is set by GPS";
-// 			break;
 		case "2_Az_Gear_Ratio:":
 			$html .= "<tr><td>$sdType</td><td><input type=text Name=$sdType Value=$sdValue ></td><td>";
-			$html .= " Number of teeth on belt divided by Number of teeth on drive gear";
+			$html .= " ver mk3_14 Final Drive Ratio, ver mk3_15 Total Drive Ratio";
 			$azVelStart= ($sdValue/360)*394285.71428573681633;
 			break;
 		case "2_Alt_Gear_Ratio:":
 			$altVelStart=($sdValue/360)*394285.71428573681633;
 			$html .= "<tr><td>$sdType</td><td><input type=text Name=$sdType Value=$sdValue ></td><td>";
-			$html .= " Number of teeth on belt divided by Number of teeth on drive gear";
+			$html .= " ver mk3_14 Final Drive Ratio, ver mk3_15 Total Drive Ratio";
 			break;
 		case "2_Alt_Gear:":
 			$lCheck="";
@@ -329,7 +272,6 @@ while(!feof($fp)) {
 			$html .= "<tr><td>$sdType</td><td>A<input name=$sdType type=radio value='Left' $lCheck />
 												B<input name=$sdType type=radio value='Right' $rCheck /></td><td>";
 			$html .= " If your Alt direction is wrong change this";
-			//$html .= " Is the Alt drive gear Left of stepper motor or Right of stepper motor";
 			break;
 		case "2_Az_Direction:":
 			$lCheck="";

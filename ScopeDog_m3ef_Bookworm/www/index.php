@@ -52,13 +52,13 @@ while(!feof($fp)) {
 			break;
 		case "1_Az_Gear_Ratio:":
 			$html .= "<tr><td>$sdType</td><td><input type=text Name=$sdType Value=$sdValue ></td><td>";
-			$html .= " Number of teeth on belt divided by Number of teeth on drive gear";
+			$html .= " ver mk3_14 Final Drive Ratio, ver mk3_15 Total Drive Ratio";
 			$azVelStart= ($sdValue/360)*394285.71428573681633;
 			break;
 		case "1_Alt_Gear_Ratio:":
 			$altVelStart=($sdValue/360)*394285.71428573681633;
 			$html .= "<tr><td>$sdType</td><td><input type=text Name=$sdType Value=$sdValue ></td><td>";
-			$html .= " Number of teeth on belt divided by Number of teeth on drive gear";
+			$html .= " ver mk3_14 Final Drive Ratio, ver mk3_15 Total Drive Ratio";
 			break;
 		case "1_Alt_Gear:":
 			$lCheck="";
@@ -159,13 +159,13 @@ while(!feof($fp)) {
 			break;
 		case "2_Az_Gear_Ratio:":
 			$html .= "<tr><td>$sdType</td><td><input type=text Name=$sdType Value=$sdValue ></td><td>";
-			$html .= " Number of teeth on belt divided by Number of teeth on drive gear";
+			$html .= " ver mk3_14 Final Drive Ratio, ver mk3_15 Total Drive Ratio";
 			$azVelStart= ($sdValue/360)*394285.71428573681633;
 			break;
 		case "2_Alt_Gear_Ratio:":
 			$altVelStart=($sdValue/360)*394285.71428573681633;
 			$html .= "<tr><td>$sdType</td><td><input type=text Name=$sdType Value=$sdValue ></td><td>";
-			$html .= " Number of teeth on belt divided by Number of teeth on drive gear";
+			$html .= " ver mk3_14 Final Drive Ratio, ver mk3_15 Total Drive Ratio";
 			break;
 		case "2_Alt_Gear:":
 			$lCheck="";
