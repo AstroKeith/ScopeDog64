@@ -67,7 +67,9 @@ class Handpad:
         
         global jStickSpeed
         self.box.write(bytes(("0:" + line0 + "\n").encode("UTF-8")))
+        time.sleep(0.05)
         self.box.write(bytes(("1:" + line1 + "\n").encode("UTF-8")))
+        time.sleep(0.05)
         self.box.write(bytes(("2:" + line2.ljust(14) + " " + str(jStickSpeed) + "\n").encode("UTF-8")))
 
     def get_box(self) -> serial.Serial:
