@@ -1,10 +1,10 @@
 import time
 import serial
-import threading
-import select
-import subprocess
-
-jStickSpeed = 1
+#import threading
+#import select
+#import subprocess
+import usbAssign
+jStickSpeed = ""
 
 class Handpad:
     """All methods to work with the handpad"""
@@ -15,12 +15,9 @@ class Handpad:
         Parameters:
         version (str): The version of the eFinder software
         """
-        result = subprocess.check_output('ls -l /dev/serial/by-id/',shell=True)
-        result =(result.decode('ascii')).splitlines()
-        for n in range(len(result)):
-            if "MicroPython" in result[n]:
-                dev_name = "/dev/"+ result[n][-7:]
-                print ('handpad connected to ',dev_name)
+        usbtty = usbAssign.usbAssign()
+        dev_name = usbtty.get_handbox_usb()
+        print ("hand box is connected to:",dev_name)
         self.version = version
         try:
             self.box = serial.Serial(
@@ -35,8 +32,8 @@ class Handpad:
             )
             self.box.write(b"0:ScopeDog eFinder\n")
             self.box.write(b"1:eFinder found   \n")
-            if "VNC" in version:
-                self.box.write(b"2:VNCGUI running  \n")
+            if "GUI" in version:
+                self.box.write(b"2:GUI running  \n")
             else:
                 self.box.write(b"2:                \n")
 

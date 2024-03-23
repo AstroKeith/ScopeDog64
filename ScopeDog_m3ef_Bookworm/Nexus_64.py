@@ -8,8 +8,8 @@ import math
 import re
 import Display_64
 import Coordinates_64
+import usbAssign
 
-# ver 2
 class Nexus:
     """The Nexus utility class"""
 
@@ -31,9 +31,11 @@ class Nexus:
         self.earth,self.moon = coordinates.get_earth(), coordinates.get_moon()
         self.ts = coordinates.get_ts()
         #self.ts = load.timescale()
-
+        usbtty = usbAssign.usbAssign()
+        dev_name = usbtty.get_Nexus_usb()
+        print ("Nexus DSC is connected to:",dev_name)
         try:
-            self.ser = serial.Serial("/dev/ttyAMA0", baudrate=9600)
+            self.ser = serial.Serial(dev_name, baudrate=9600)
             self.ser.write(b":P#")
             time.sleep(0.1)
             p = str(self.ser.read(self.ser.in_waiting), "ascii")
