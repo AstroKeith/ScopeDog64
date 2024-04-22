@@ -58,7 +58,7 @@ calibrate = False
 az_Joy = alt_Joy = False
 home_path = str(Path.home())
 print('homepath',home_path)
-version = "mk3_16ef"
+version = "mk3_16ef" # mk3_16_3
 x = y = 0  # x, y  define what page the display is showing
 deltaAz = deltaAlt = 0
 increment = [0, 1, 5, 1, 1]
@@ -583,7 +583,7 @@ def saveRatios():
     configCopy.update({keyNew:str(newAltRatio)})
     azRatio = newAzRatio
     altRatio = newAltRatio
-    with open(home_path+"/ScopeDog_new.config","w") as h:
+    with open(home_path+"/ScopeDog.config","w") as h:
         for key, value in configCopy.items():
             h.write("%s:%s\n" % (key,value))
     stepsPerArcsecAZ = azRatio/(stepAngle * 3600) ## of steps per arcsec
