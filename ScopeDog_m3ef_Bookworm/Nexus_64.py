@@ -9,7 +9,10 @@ import re
 import Display_64
 import Coordinates_64
 import usbAssign
+import sys
+import subprocess
 
+# ver3 needed for mk3_16_5 or later
 class Nexus:
     """The Nexus utility class"""
 
@@ -74,6 +77,15 @@ class Nexus:
             except:
                 print("no USB or Wifi link to Nexus")
                 self.handpad.display("Nexus not found", "", "")
+                try:
+                    print("Trying to start ScopeDog Lite")
+                    self.handpad.display("Nexus not found", "Will try", "ScopeDog Lite")
+                    time.sleep(1)
+                    subprocess.Popen(["venv-scopedog/bin/python","lite/scopedog_lite_ef.py"])
+                except:
+                    print("Failed to start ScopeDog Lite")
+                    self.handpad.display("ScopeDog Lite", "Not found", "")
+                sys.exit()
 
     def write(self, txt: str) -> None:
         """Write a message to the Nexus DSC
