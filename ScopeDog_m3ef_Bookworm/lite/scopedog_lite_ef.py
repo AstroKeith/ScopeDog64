@@ -40,10 +40,11 @@ import select
 from pathlib import Path
 import fitsio
 import Location_64
-import Coordinates_64
+import Coordinates_lite
 import Display_64
 from collections import OrderedDict
 import socket
+
 
 ser = serial.Serial("/dev/ttyAMA2",baudrate=19200)
 
@@ -59,7 +60,7 @@ calibrate = False
 az_Joy = alt_Joy = False
 home_path = str(Path.home())
 print('homepath',home_path)
-version = "Lite_5" 
+version = "lite_6" 
 x = y = 0  # x, y  define what page the display is showing
 deltaAz = deltaAlt = 0
 increment = [0, 1, 5, 1, 1]
@@ -129,8 +130,8 @@ def scopedog_loop(): # run at 1Hz
         lst = t.gmst + lon/15
         
         if align_count != 0:
-            azCountPos = azStepAngle * azStepper.getPosition()+ cAz
-            altCountPos = altStepAngle * -1 * AltStepper.getPosition()+ cAlt
+            azCountPos = azStepAngle * int(-azDir) * azStepper.getPosition()+ cAz
+            altCountPos = altStepAngle * int(-altSide) * AltStepper.getPosition()+ cAlt
             scopeRa,scopeDec = geoloc.altaz2Radec(azCountPos,altCountPos)
              
         
@@ -838,7 +839,6 @@ def do_align():
     cAz = solved_altaz[1] - azStepAngle * azStepper.getPosition() * int(-azDir)
     cAlt = solved_altaz[0] - altStepAngle * AltStepper.getPosition() * int(-altSide)
     
-
 def align():
     global align_count, sync_count, solve,x,y
     if camera.camType == "not found":
@@ -1156,7 +1156,7 @@ def vLimit_adj(i):
 # here starts the main code
 
 handpad = Display_64.Handpad(version)
-coordinates = Coordinates_64.Coordinates()
+coordinates = Coordinates_lite.Coordinates()
 geoloc = Location_64.Geoloc(handpad, coordinates)
 geoloc.read()
 
@@ -1223,6 +1223,7 @@ if 'A' in parameters['Az_Direction']:
 else:
     azDir = 1.0
     max=-20000000
+print('azDir:',azDir,'  altSide:',altSide)
 if 'checked' in parameters['flip_AltF']:
     flip_AltF=1
 else:

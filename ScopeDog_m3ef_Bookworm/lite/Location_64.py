@@ -4,13 +4,13 @@ from skyfield.api import Star, wgs84
 #from datetime import datetime, timedelta
 import os
 import Display_64
-import Coordinates_64
+import Coordinates_lite
 from gps3 import agps3
 
 class Geoloc:
     """The Geoloc utility class"""
 
-    def __init__(self, handpad: Display_64, coordinates: Coordinates_64) -> None:
+    def __init__(self, handpad: Display_64, coordinates: Coordinates_lite) -> None:
         """Initializes
 
         Parameters:
