@@ -60,7 +60,7 @@ calibrate = False
 az_Joy = alt_Joy = False
 home_path = str(Path.home())
 print('homepath',home_path)
-version = "lite_6" 
+version = "lite_7" 
 x = y = 0  # x, y  define what page the display is showing
 deltaAz = deltaAlt = 0
 increment = [0, 1, 5, 1, 1]
@@ -221,8 +221,8 @@ def serveWifi(): # replace with serve WiFi port
                     Led2.toggle()
                     time.sleep(0.02)
                     if align_count != 0:
-                        azCountPos = azStepAngle * azStepper.getPosition()+ cAz
-                        altCountPos = altStepAngle * -1 * AltStepper.getPosition()+ cAlt
+                        azCountPos = azStepAngle * int(-azDir) * azStepper.getPosition()+ cAz
+                        altCountPos = altStepAngle * int(-altSide) * AltStepper.getPosition()+ cAlt
                         scopeRa,scopeDec = geoloc.altaz2Radec(azCountPos,altCountPos)
                     #print(pkt)
                     #time.sleep(0.1)
