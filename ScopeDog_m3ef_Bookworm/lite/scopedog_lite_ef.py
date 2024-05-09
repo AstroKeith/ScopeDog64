@@ -525,6 +525,7 @@ def performSSgoto():
         AltStepper.setEngaged(True)
         while azStepper.getIsMoving()==1 or AltStepper.getIsMoving()==1:
             time.sleep(0.1)
+        handpad.display('GoTo finished','','')
         time.sleep(0.4)
 
         # insert solve/align so as to fix scopeRA & scopeDec
