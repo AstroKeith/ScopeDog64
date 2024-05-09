@@ -1165,7 +1165,7 @@ updateFirmware()
 argLen = len(sys.argv)
 print ('Number of arguments:', argLen, 'arguments.')
 args=sys.argv
-run=True
+run=False
 if (argLen > 1):
     run=True
 print ("Run: ",run)
