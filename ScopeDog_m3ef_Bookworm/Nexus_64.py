@@ -81,7 +81,7 @@ class Nexus:
                     print("Trying to start ScopeDog Lite")
                     self.handpad.display("Nexus not found", "Will try", "ScopeDog Lite")
                     time.sleep(1)
-                    subprocess.Popen(["venv-scopedog/bin/python","lite/scopedog_lite_ef.py"])
+                    subprocess.Popen(["venv-scopedog/bin/python","lite/scopedog_lite_ef.py","run"])
                 except:
                     print("Failed to start ScopeDog Lite")
                     self.handpad.display("ScopeDog Lite", "Not found", "")
