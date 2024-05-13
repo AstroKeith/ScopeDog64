@@ -9,7 +9,7 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# This variant is customised for ZWOASI or QHY ccds as camera, Nexus DSC as telescope interface
+# This variant is customised for ZWOASI or QHY ccds as camera, No DSC
 # It requires astrometry.net installed
 
 from Phidget22.Phidget import *
@@ -39,10 +39,12 @@ import numpy as np
 import select
 from pathlib import Path
 import fitsio
-import Nexus_64
-import Coordinates_64
+import Location_64
+import Coordinates_lite
 import Display_64
 from collections import OrderedDict
+import socket
+
 
 ser = serial.Serial("/dev/ttyAMA2",baudrate=19200)
 
@@ -50,7 +52,7 @@ azSteps = altSteps=0
 trackFracAZ = trackFracALT = 0.0
 stepAngle = 1.8/16.0
 jStickSpeed = 1
-azCurrentPosition = altCurrentPosition = 0
+azCurrentPosition = altCurrentPosition = 100000
 azAPSAval = altAPSAval=0
 go_to = False
 moving = False
@@ -58,7 +60,7 @@ calibrate = False
 az_Joy = alt_Joy = False
 home_path = str(Path.home())
 print('homepath',home_path)
-version = "mk3_16ef" # mk3_16_5
+version = "lite_7" 
 x = y = 0  # x, y  define what page the display is showing
 deltaAz = deltaAlt = 0
 increment = [0, 1, 5, 1, 1]
@@ -77,6 +79,9 @@ rate_str = rateTable[rateInd]
 ts = load.timescale()
 alt_rate = az_rate = 0
 newAzRatio = newAltRatio = azBacklash = altBacklash = lookRatio = 0
+cAz = cAlt = 0
+doMove = False
+speed = 10
 
 try:
     import board
@@ -93,11 +98,11 @@ except:
     ina = False
 
 def scopedog_loop(): # run at 1Hz
-    global ina, lowBattery, az_Joy, alt_rate, az_rate, jStickSpeed, scopeAz, scopeAlt, alt_Joy, go_to, moving, loop, arr,ampHour
+    global ina, lst, lowBattery, az_Joy, alt_rate, az_rate, jStickSpeed, scopeAz, scopeAlt, scopeDec, scopeAz, alt_Joy, go_to, moving, loop, arr,ampHour,scopeRa,scopeDec
     blink = True
     lowBattery = False
     ampHour = 0
-    time.sleep(1) # makes nexus loop has read first
+    time.sleep(1) 
     while True:
         Led1.toggle()
         if go_to == True:
@@ -116,20 +121,29 @@ def scopedog_loop(): # run at 1Hz
                 loop = ""
                 go_solve()
             go_to = False
-        
-        if rateInd == 0:
-            alt_rate = alt_s_rate
-            az_rate = az_s_rate
-        elif rateInd == 1:
-            g_ra, g_dec, alt, alt_rate, az_rate = nexus.get_lunar_rates()
-        elif rateInd == 2:
-            alt_rate = az_rate = 0
-            
+        elif doMove == True:
+            print('moving scope')
+            moveScope(dirMove)
         now = datetime.now()
         nowStr = now.strftime("%d/%m/%Y %H:%M:%S")
         t = ts.now()
         lst = t.gmst + lon/15
+        
+        if align_count != 0:
+            azCountPos = azStepAngle * int(-azDir) * azStepper.getPosition()+ cAz
+            altCountPos = altStepAngle * int(-altSide) * AltStepper.getPosition()+ cAlt
+            scopeRa,scopeDec = geoloc.altaz2Radec(azCountPos,altCountPos)
+             
+        
+        scopeAlt, scopeAz, alt_s_rate, az_s_rate = (geoloc.get_rate(scopeRa,scopeDec))
 
+        if rateInd == 0:
+            alt_rate = alt_s_rate
+            az_rate = az_s_rate
+        elif rateInd == 1:
+            g_ra, g_dec, alt, alt_rate, az_rate = geoloc.get_lunar_rates()
+        elif rateInd == 2:
+            alt_rate = az_rate = 0
 
         if (az_Joy == False) and (alt_Joy == False) and (go_to == False) and (moving == False):
             
@@ -141,6 +155,7 @@ def scopedog_loop(): # run at 1Hz
             print("RA:  ",coordinates.dd2dms(scopeRa).strip('+'), "   Dec:  ",coordinates.dd2dms(scopeDec))
             print("           Az         Alt")
             print('%s    %3s      %s   %s' % ('Angle',coordinates.dd2dms(scopeAz.degrees).strip('+'),coordinates.dd2dms(scopeAlt.degrees),'degrees'))
+            #print('%s   %3s      %s   %s' % ('AngleC',coordinates.dd2dms(azCountPos).strip('+'),coordinates.dd2dms(altCountPos),'degrees'))
             print('%s   %2.3f       %2.3f   %s' % ('Motion',az_rate,alt_rate,'"/sec'))
             print('%s     %6.4f      %6.4f' % ('APSA',azAPSAval,altAPSAval))
             print('%s    %3.0f         %3.0f' % ('steps',azSteps,altSteps))
@@ -183,49 +198,101 @@ def scopedog_loop(): # run at 1Hz
         remain = 1-(time.time() % 1)
         time.sleep(remain)
         
-def get_nexus(): # updates scopePos or gotoPos with latest Nexus reading
-    global go_to, scopeRa, scopeDec, gotoRa, gotoDec, alt_s_rate, az_s_rate, scopeAlt, scopeAz
-    while True:
-        time.sleep(0.1)
-        Led2.toggle()
-        try:
-            ser.write(b'\n')
-            while ser.in_waiting ==0:
-                time.sleep(0.05)
-            time.sleep(0.1)
-            reply = ser.read(ser.in_waiting)
-            reply = reply.decode('ascii')
-            if 'g99' in reply: # stop the goto
-                stop_goto()
-            elif 'M' in reply:
-                pos = reply.index('M')
-                reply = reply[pos:pos+4]
-                if len(reply) != 4:
-                    continue
-                print('Move: ',reply)
-                moveScope(reply)
-            elif 'g' in reply:
-                pos = reply.index('g')
-                reply = reply[pos:pos+16]
-                if len(reply) != 16:
-                    continue
-                print('goto: ',reply)
-                go_to = True
-                gotoRa = float(reply[1:7]) #hh.ddd
-                gotoDec = float(reply[8:15]) #dd.ddd
-                print('gotoPos',gotoRa,gotoDec)
-            else:    
-                scopeRa = float(reply[1:7]) #hh.ddd
-                scopeDec = float(reply[8:15]) #dd.ddd
-                position = skyfield.positionlib.position_of_radec(scopeRa, scopeDec, epoch=ts.now())
-                ra, dec, d = position.radec(ts.J2000)
-                scopeAlt, scopeAz, alt_s_rate, az_s_rate = (nexus.get_rate(ra.hours,dec.degrees))
-        except Exception as error:
-            print("Nexus read error",error)
+def serveWifi(): # replace with serve WiFi port
+    global gotoRa,gotoDec, go_to,doMove, dirMove, scopeRa, scopeDec, speed
+
+    host = ''
+    port = 4060
+    backlog = 50
+    size = 1024
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind((host,port))
+    s.listen(backlog)
+    try:
+        while True:
+            client, address = s.accept()
+            while True:
+                data = client.recv(size)
+                if not data:
+                    break
+                if data:
+                    pkt = data.decode("utf-8","ignore")
+                    Led2.toggle()
+                    time.sleep(0.02)
+                    if align_count != 0:
+                        azCountPos = azStepAngle * int(-azDir) * azStepper.getPosition()+ cAz
+                        altCountPos = altStepAngle * int(-altSide) * AltStepper.getPosition()+ cAlt
+                        scopeRa,scopeDec = geoloc.altaz2Radec(azCountPos,altCountPos)
+                    #print(pkt)
+                    #time.sleep(0.1)
+                    a = pkt.split('#')
+                    #print(a)
+                    raPacket = coordinates.dd2dms(scopeRa)+'#'
+                    decPacket = coordinates.dd2aligndms(scopeDec)+'#'
+                    for x in a:
+                        if x != '':
+                            #print (x)
+                            if x == ':GR':
+                                #print("sending RA  ",raPacket)
+                                #time.sleep(0.05)
+                                client.send(bytes(raPacket.encode('ascii')))
+                            elif x == ':GD':
+                                #print("sending Dec",decPacket)
+                                #time.sleep(.05)
+                                client.send(bytes(decPacket.encode('ascii')))
+                            elif x == ':RC':
+                                #print("send Dec")
+                                #time.sleep(.1)
+                                speed = 10
+                                #client.send(bytes(decPacket.encode('ascii')))
+                            elif x[1:3] == 'Sr': # goto instructions incoming
+                                packet = '1'
+                                raStr = x[3:]
+                                client.send(b'1')
+                            elif x[1:3] == 'Sd': # goto instructions incoming
+                                packet = '1'
+                                decStr = x[3:]
+                                client.send(b'1')  
+                            elif x[1:3] == 'MS':
+                                client.send(b'0')
+                                ra = raStr.split(':')
+                                gotoRa = int(ra[0])+int(ra[1])/60+int(ra[2])/3600
+                                dec = decStr.split('*')
+                                decdec = dec[1].split(':')
+                                gotoDec = int(dec[0]) + math.copysign((int(decdec[0])/60+int(decdec[1])/3600),float(dec[0]))
+                                print('GoTo target received:',gotoRa, gotoDec)
+                                go_to = True
+                            elif x[1:3] == 'RG':
+                                print('RG')
+                                speed = 40
+                                #client.send(bytes(decPacket.encode('ascii')))
+                            elif x[1:3] == 'RM':
+                                print('RM')
+                                speed = 3
+                                #client.send(bytes(decPacket.encode('ascii')))
+                            elif x[1:3] == 'RS':
+                                print('RS')
+                                speed = 1
+                                #client.send(bytes(decPacket.encode('ascii')))
+                            elif x[1] == 'M':
+                                doMove = True
+                                dirMove = x[2]
+                            elif x[1] == 'Q':
+                                print('STOP!')
+                                go_to = False
+                                doMove = False
+                                stop_goto()
+                    
+    except:
+        pass
+    
 
 def stop_goto():
-    global go_to
+    global go_to, doMove, moving
     go_to = False
+    doMove = False
+    moving =False
     azStepper.setAcceleration(10000)
     azStepper.setVelocityLimit(0)
     AltStepper.setAcceleration(10000)
@@ -255,20 +322,19 @@ def butChange(state=True):
         
 def moveScope(moveString):
     global moving
-    speed = sp[moveString[2]]
     print ('move speed',speed)
     Alt = False
     Az = False
-    if (moveString[1] == "N"):
+    if (moveString == "n"):
         diRection = (int)(-1 * altSide)
         Alt = True
-    elif (moveString[1] == "S"):
+    elif (moveString == "s"):
         diRection = (int)(1 * altSide)
         Alt = True
-    elif (moveString[1] == "E"):
+    elif (moveString == "e"):
         diRection = -1
         Az = True
-    elif (moveString[1] == "W"):
+    elif (moveString == "w"):
         diRection = 1
         Az = True
     if (Az):
@@ -418,9 +484,11 @@ def trackInALT(altMotion):
 
 def calculateGoToSteps():
     # update Goto AltAz coordinates
+    #gotoRa = goto_radec[0]
+    #gotoDec = goto_radec[1]
     position = skyfield.positionlib.position_of_radec(gotoRa, gotoDec, epoch=ts.now())
     ra, dec, d = position.radec(ts.J2000)
-    gotoAlt, gotoAz, alt_rate, az_rate = (nexus.get_rate(ra.hours,dec.degrees))
+    gotoAlt, gotoAz, alt_rate, az_rate = (geoloc.get_rate(ra.hours,dec.degrees))
     # calculate deltas
     newDeltaAZ = gotoAz.degrees - scopeAz.degrees
     newDeltaALT = gotoAlt.degrees - scopeAlt.degrees
@@ -458,12 +526,13 @@ def performSSgoto():
         while azStepper.getIsMoving()==1 or AltStepper.getIsMoving()==1:
             time.sleep(0.1)
         time.sleep(0.4)
-        print('scope Position',scopeRa,scopeDec)
-        print('goto Position',gotoRa,gotoDec)
+        handpad.display('GoTo finished','','')
+        # insert solve/align so as to fix scopeRA & scopeDec
+        '''
         scope = Star(ra_hours=scopeRa, dec_degrees=scopeDec)  # will set as J2000 as no epoch input
-        scopeLoc = (nexus.get_location().at(coordinates.get_ts().now()).observe(scope))  # now at Jnow and current location
+        scopeLoc = (geoloc.get_location().at(coordinates.get_ts().now()).observe(scope))  # now at Jnow and current location
         goto = Star(ra_hours=gotoRa, dec_degrees=gotoDec)  # will set as J2000 as no epoch input
-        gotoLoc = (nexus.get_location().at(coordinates.get_ts().now()).observe(goto))  # now at Jnow and current location
+        gotoLoc = (geoloc.get_location().at(coordinates.get_ts().now()).observe(goto))  # now at Jnow and current location
         sep = scopeLoc.separation_from(gotoLoc)
         delta = sep.arcminutes()
         print('%s %3.1f %s' % ('delta',delta,'arc minutes'))
@@ -471,7 +540,8 @@ def performSSgoto():
         if delta > backlash:
             count +=1
             performSSgoto()
-        handpad.display('Finished GoTo'+loop,'Final delta',str(delta_str)[0:4]+' arcmin')
+        '''
+        # handpad.display('Finished GoTo'+loop,'Final delta',str(delta_str)[0:4]+' arcmin')
         count = 1
         go_to = False
 
@@ -519,14 +589,10 @@ def calibrateDrive():
     time.sleep(0.1)
     handpad.display('Performing first','transit','keep clear')
     azalt0 = solved_altaz
-    nexAltAz0 = nexus.get_altAz()
-    print ('%s %3.3f %2.3f' % ('Nexus Initial Az,Alt:',nexAltAz0[1],nexAltAz0[0]))
     print ('%s %3.3f %2.3f' % ('Initial Az,Alt:',azalt0[1],azalt0[0]))
     driveScope(moveAz,moveAlt)
     go_solve() # re-measure actual Az & Alt
     azalt1 = solved_altaz
-    nexAltAz1 = nexus.get_altAz()
-    print ('%s %3.3f %2.3f' % ('Nexus Destination Az,Alt:',nexAltAz1[1],nexAltAz1[0]))
     print ('%s %3.3f %2.3f' % ('Destination Az,Alt:',azalt1[1],azalt1[0]))
     actDeltaAz = azalt0[1] - azalt1[1]
     newAzRatio = azRatio * actDeltaAz/dAz
@@ -536,10 +602,6 @@ def calibrateDrive():
     print ('%s %4.1f %4.1f' % ('New ratios (Az,Alt):',newAzRatio,newAltRatio))
     nexDeltaAz = nexAltAz1[1] - nexAltAz0[1]
     nexDeltaAlt = nexAltAz1[0] - nexAltAz0[0]
-    print('%s %2.3f %2.3f %s' % ('Nexus delta Az, Alt:',nexDeltaAz,nexDeltaAlt,'degrees'))
-    nexVsolAz = actDeltaAz - nexDeltaAz
-    nexVsolAlt = actDeltaAlt - nexDeltaAlt
-    print ('%s %2.3f %2.3f %s' % ('Nexus vs Solve Az, Alt:',nexVsolAz,nexVsolAlt,'degrees'))
     time.sleep(1)
     print('Performing Final Transit & Solve')
     handpad.display('Performing final','transit & solve',' ')
@@ -547,8 +609,6 @@ def calibrateDrive():
     driveScope(-moveAz,-moveAlt)
     go_solve() # re-measure actual Az & Alt, should be same as start, except for backlash
     azalt2 = solved_altaz
-    nexAltAz2 = nexus.get_altAz()
-    print ('%s %3.3f %2.3f' % ('Nexus Returned to start Az,Alt:',nexAltAz2[1],nexAltAz2[0]))
     print ('%s %3.3f %2.3f' % ('Returned to start Az,Alt:',azalt2[1],azalt2[0]))
     actDeltaAz = azalt2[1] - azalt1[1]
     azBacklash = 60 * (dAz - actDeltaAz)
@@ -573,7 +633,7 @@ def compareRatios(s):
     elif lookRatio == 1:
         handpad.display('Backlash','Az: '+str(int(azBacklash)),'Alt: '+str(int(altBacklash)))
     else:
-        handpad.display('Nexus error','Az: '+str(nexVsolAz * 60)[0:6],'Alt: '+str(nexVsolAlt * 60)[0:6])
+        handpad.display('Dummy','Az: ','Alt: ')
 
 def saveRatios():
     global azRatio, altRatio, stepsPerArcsecAZ, stepsPerArcsecALT
@@ -715,9 +775,10 @@ def solveImage():
                 print("Solve-field Plot found: ", star_name)
                 break
     solvedPos,solved_altaz = applyOffset()
+    #print('altaz',solved_altaz)
+    #print('scope:',scopeAz.degrees,scopeAlt.degrees)
     ra, dec, d = solvedPos.apparent().radec(coordinates.get_ts().now())
     solved_radec = ra.hours, dec.degrees
-    nexus.set_scope_alt(solved_altaz[0] * math.pi / 180)
     arr[0, 2][0] = "Sol: RA " + coordinates.hh2dms(solved_radec[0])
     arr[0, 2][1] = "   Dec " + coordinates.dd2dms(solved_radec[1])
     arr[0, 2][2] = "time: " + str(elapsed_time)[0:4] + " s"
@@ -731,25 +792,31 @@ def applyOffset():
     )
     ra, dec = xy2rd(x_offset, y_offset)
     solved = Star(ra_hours=ra / 15, dec_degrees=dec)  # will set as J2000 as no epoch input
-    solvedPos_scope = (nexus.get_location().at(coordinates.get_ts().now()).observe(solved))  # now at Jnow and current location
-    solvedAlt,solvedAz,rate1,rate2 = nexus.get_rate(ra/15,dec)
+    solvedPos_scope = (geoloc.get_location().at(coordinates.get_ts().now()).observe(solved))  # now at Jnow and current location
+    solvedAlt,solvedAz,rate1,rate2 = geoloc.get_rate(ra/15,dec)
     solved_altaz = solvedAlt.degrees,solvedAz.degrees
     return solvedPos_scope,solved_altaz
 
-
 def deltaCalc():
-    global deltaAz, deltaAlt, elapsed_time
-    nexus.read_altAz(arr)
-    deltaAz = solved_altaz[1] - nexus.get_altAz()[1]
+    global deltaAz, deltaAlt, elapsed_time, scopeAlt, scopeAz
+    
+    azCountPos = azStepAngle * azStepper.getPosition()+ cAz
+    altCountPos = altStepAngle * -1 * AltStepper.getPosition()+ cAlt
+        
+    scopeRa,scopeDec = geoloc.altaz2Radec(azCountPos,altCountPos)
+    scopeAlt, scopeAz, alt_s_rate, az_s_rate = (geoloc.get_rate(scopeRa,scopeDec))
+
+    deltaAz = solved_altaz[1] - scopeAz.degrees
+    print('dektaA:',deltaAz)
     if abs(deltaAz) > 180:
         if deltaAz < 0:
             deltaAz = deltaAz + 360
         else:
             deltaAz = deltaAz - 360
     deltaAz = 60 * (
-        deltaAz * math.cos(nexus.get_scope_alt())
+        deltaAz * math.cos(scopeAlt.degrees * math.pi/180)
     )  # actually this is delta'x' in arcminutes
-    deltaAlt = solved_altaz[0] - nexus.get_altAz()[0]
+    deltaAlt = solved_altaz[0] - scopeAlt.degrees
     deltaAlt = 60 * (deltaAlt)  # in arcminutes
     deltaXstr = "{: .2f}".format(float(deltaAz))
     deltaYstr = "{: .2f}".format(float(deltaAlt))
@@ -759,33 +826,19 @@ def deltaCalc():
 
 
 def do_align():
-    global align_count, solve, sync_count, param, offset_flag, arr
-    new_arr = nexus.read_altAz(arr)
-    arr = new_arr
+    global align_count, solve, sync_count, param, offset_flag, arr, cAz, cAlt
+    #new_arr = geoloc.read_altAz(arr)
+    #arr = new_arr
     handpad.display('Attempting','Solve & Align','')
     capture()
     solveImage()
     if solve == False:
         handpad.display(arr[x, y][0], "Solved Failed", arr[x, y][2])
         return
-    align_ra = ":Sr" + coordinates.dd2dms((solved_radec)[0]) + "#"
-    align_dec = ":Sd" + coordinates.dd2aligndms((solved_radec)[1]) + "#"
-    valid = nexus.get(align_ra)
-    print(align_ra)
-    if valid == "0":
-        print("invalid position")
-        handpad.display(arr[x, y][0], "Invalid position", arr[x, y][2])
-        return
-    valid = nexus.get(align_dec)
-    print(align_dec)
-    if valid == "0":
-        print("invalid position")
-        handpad.display(arr[x, y][0], "Invalid position", arr[x, y][2])
-        return
-    reply = nexus.get(":CM#")
-    print("reply: ", reply)
+    print('solved_altaz',solved_altaz)
+    cAz = solved_altaz[1] - azStepAngle * azStepper.getPosition() * int(-azDir)
+    cAlt = solved_altaz[0] - altStepAngle * AltStepper.getPosition() * int(-altSide)
     
-
 def align():
     global align_count, sync_count, solve,x,y
     if camera.camType == "not found":
@@ -795,20 +848,11 @@ def align():
     do_align()
     if solve == False:
         return
-    p = nexus.get(":GW#")
-    print("Align status reply ", p)
-    if p != "AT2":
-        align_count += 1
-        arr[0, 3][0] = "'OK' aligns"
-        arr[0, 3][1] = "Not aligned"
-        arr[0, 3][2] = ' count: '+str(align_count)  
-    else:
-        if p == "AT2":  
-            arr[0, 3][0] = "'OK' syncs"
-            arr[0, 3][1] = "Nexus is aligned"
-            arr[0, 3][2] = ' count: '+str(sync_count)
-            sync_count += 1
-            nexus.set_aligned(True)
+    
+    align_count += 1
+    arr[0, 3][0] = "'OK' aligns"
+    arr[0, 3][1] = ""
+    arr[0, 3][2] = ' count: '+str(align_count)  
     deltaCalc()
     handpad.display(arr[x,y][0],arr[x,y][1],arr[x,y][2])
     return
@@ -851,14 +895,8 @@ def up_down(v):
 def left_right(v):
     global y
     y = y + v
-    if x == 0 and y == 3:
-        p = nexus.get(":GW#")
-        if p == "AT2":
-            arr[0,3][1] = "Nexus Aligned"
-        arr[0,3][2] = "Nex:" + p
     handpad.display(arr[x, y][0], arr[x, y][1], arr[x, y][2])
-    #if x == 2 and y == 3: 
-    #    handpad.display(arr[x, y][0], arr[x, y][1], arr[x, y][2])
+
 
 def up_down_inc(i, sign):
     global increment, param
@@ -916,11 +954,10 @@ def capture():
         m13 = False
         polaris_cap = False
 
-    radec = nexus.get_short()
     camera.capture(
         int(float(param["Exposure"]) * 1000000),
         int(float(param["Gain"])),
-        radec,
+        "n/a",
         m13,
         polaris_cap,
         destPath,
@@ -933,8 +970,8 @@ def go_solve():
         handpad.display("no camera"," "," ")
         time.sleep(2)
         return
-    new_arr = nexus.read_altAz(arr)
-    arr = new_arr
+    #new_arr = geoloc.read_altAz(arr)
+    #arr = new_arr
     handpad.display("Image capture"," "," ")
     capture()
     #imgDisplay()
@@ -954,22 +991,14 @@ def go_solve():
 
 
 def goto():
+    global go_to
     handpad.display("Attempting", "GoTo++", "")
-    goto_ra = nexus.get(":Gr#")
-    if (
-        goto_ra[0:2] == "00" and goto_ra[3:5] == "00"
-    ):  # not a valid goto target set yet.
-        print("no GoTo target")
-        return
-    goto_dec = nexus.get(":Gd#")
-    print("Target Goto RA & Dec", goto_ra, goto_dec)
+    
     align()
     if solve == False:
         handpad.display("problem", "solving", "")
         return
-    nexus.write(":Sr" + goto_ra + "#")
-    nexus.write(":Sd" + goto_dec + "#")
-    reply = nexus.get(":MS#")
+    go_to = True
     handpad.display("Performing", " GoTo++", "")
     print('Performing GoTo++')
     time.sleep(2) 
@@ -982,7 +1011,7 @@ def goto_moon():
         return
     elif rateInd == 2:
         return
-    gotoRa, gotoDec, alt, r1, r2 = nexus.get_lunar_rates()
+    gotoRa, gotoDec, alt, r1, r2 = geoloc.get_lunar_rates()
     if alt < 10:
         handpad.display("Moon too low","altitude",str(alt)[0:6] + "deg")
         time.sleep(2)
@@ -990,24 +1019,19 @@ def goto_moon():
     go_to = True
 
 def setGoto():
-    global align_count, solve, sync_count, param, offset_flag, arr
-    new_arr = nexus.read_altAz(arr)
-    arr = new_arr
-    handpad.display('Attempting','Set ','')
+    global align_count, solve, sync_count, param, offset_flag, arr, goto_radec
+    #new_arr = geoloc.read_altAz(arr)
+    #arr = new_arr
+    handpad.display('Attempting','Set GoTo','')
     capture()
     solveImage()
     if solve == False:
         handpad.display(arr[x, y][0], "Solved Failed", arr[x, y][2])
         time.sleep(2)
         return
-    align_ra = ":Sr" + coordinates.dd2dms((solved_radec)[0]) + "#"
-    align_dec = ":Sd" + coordinates.dd2aligndms((solved_radec)[1]) + "#"
-    reply = nexus.get(align_ra)
-    reply = nexus.get(align_dec)
+    goto_radec = solved_radec
     handpad.display(arr[x, y][0], "Target Set", arr[x, y][2])
 
-def rpt_goto():
-    reply = nexus.get(":MS#")
 
 def reset_offset():
     global param, arr
@@ -1117,8 +1141,8 @@ def updateFirmware():
 
 def save_image():
     print('saving last image')
-    copyfile(destPath+"capture.jpg",home_path + "/Solver/Stills/" + nexus.get_short() + "_" + camera.get_capture_time() + ".jpg")
-    handpad.display('Saved to Stills',nexus.get_short(),camera.get_capture_time())
+    copyfile(destPath+"capture.jpg",home_path + "/Solver/Stills/" + "_" + camera.get_capture_time() + ".jpg")
+    handpad.display('Saved to Stills','',camera.get_capture_time())
 
 def vLimit_adj(i):
     global param, arr, ina
@@ -1132,9 +1156,9 @@ def vLimit_adj(i):
 # here starts the main code
 
 handpad = Display_64.Handpad(version)
-coordinates = Coordinates_64.Coordinates()
-
-
+coordinates = Coordinates_lite.Coordinates()
+geoloc = Location_64.Geoloc(handpad, coordinates)
+geoloc.read()
 
 updateFirmware()
 
@@ -1170,8 +1194,6 @@ with open(home_path+"/ScopeDog.config") as f:
                     exit()
             line = line[2:].strip("\n").split(":")
             parameters[line[0]] = line[1] 
-nexus = Nexus_64.Nexus(handpad, coordinates)
-nexus.read()
 
 azRatio = float(parameters['Az_Gear_Ratio'])
 altRatio = float(parameters['Alt_Gear_Ratio'])
@@ -1186,7 +1208,8 @@ backlash = float(parameters['Backlash'])
 stepsPerArcsecAZ = azRatio/(stepAngle * 3600) ## of steps per arcsec
 stepsPerArcsecALT = altRatio/(stepAngle * 3600) ## of steps per srcsec
 
-
+azStepAngle = stepAngle/azRatio
+altStepAngle = stepAngle/altRatio
 
 if 'Left' in parameters['Alt_Gear']:
     altSide = 1.0
@@ -1227,9 +1250,16 @@ sp = { # converts LX200 slew speed into ScopeDog max slew speed division factor
 }
 
 
-lon = nexus.get_long() # Long
-lat = nexus.get_lat() # Lat
+lon = geoloc.get_long() # Long
+lat = geoloc.get_lat() # Lat
 print("%s %2.3f  %s %3.3f" % ("Lat: ",lat,"Long: ",lon))
+
+now = datetime.now()
+nowStr = now.strftime("%d/%m/%Y %H:%M:%S")
+t = ts.now()
+lst = t.gmst + lon/15
+scopeRa = lst
+scopeDec = 89.9
 
 azStepper = Stepper()
 azStepper.setHubPort(0)
@@ -1240,6 +1270,7 @@ azStepper.setAcceleration(600)
 azStepper.setVelocityLimit(5000)
 azStepper.setEngaged(False)
 azStepper.addPositionOffset(azStepper.getPosition()*-1)
+
 azStepper.setEngaged(True)
 azStepper.setTargetPosition(0)
 AltStepper = Stepper()
@@ -1253,6 +1284,9 @@ AltStepper.setEngaged(False)
 AltStepper.addPositionOffset(AltStepper.getPosition()*-1)
 AltStepper.setEngaged(True)
 AltStepper.setTargetPosition(0)
+
+azStepper.addPositionOffset(10000000)
+AltStepper.addPositionOffset(10000000)
 
 AZjStickSlewSpeed = azVelocityLim/azSlewSpeedSlow
 ALTjStickSlewSpeed = altVelocityLim/altSlewSpeedSlow
@@ -1277,7 +1311,7 @@ scope = [
     "refresh()",
     "left_right(1)",
     "go_solve()",
-    "rpt_goto()",
+    "goto()",
 ]
 delta = [
     "Delta: No solve",
@@ -1303,7 +1337,7 @@ sol = [
 ]
 aligns = [
     "'OK' aligns",
-    "not aligned " + str(p),
+    "Scope not align",
     "Drive " + rate_str,
     "toggleDrive()",
     "toggleDrive()",
@@ -1379,8 +1413,8 @@ rate = [
     "goto_moon()",
 ]
 status = [
-    "Nexus via " + nexus.get_nexus_link(),
-    "Nex align " + str(nexus.is_aligned()),
+    "Blank",
+    "Blank",
     "Brightness",
     "up_down(-1)",
     "refresh()",
@@ -1454,11 +1488,11 @@ arr = np.array(
 update_summary()
 deg_x, deg_y, dxstr, dystr = dxdy2pixel(float(param["d_x"]), float(param["d_y"]))
 offset_str = dxstr + "," + dystr
-new_arr = nexus.read_altAz(arr)
-arr = new_arr
-if nexus.is_aligned() == True:
-    arr[0, 3][0] = "'OK' syncs"
-    arr[0, 3][1] = "Nexus is aligned"
+#new_arr = geoloc.read_altAz(arr)
+#arr = new_arr
+if align_count != 0:
+    arr[0, 3][0] = "'OK' Aligns"
+    arr[0, 3][1] = "Scope is aligned"
     arr[0, 3][2] = '- count: '+str(align_count)
 
 if 'ASI' in param["Camera Type ('QHY' or 'ASI')"]:
@@ -1473,7 +1507,7 @@ if param["Ramdisk"].lower()=='true':
 else:
     destPath = home_path + "/Solver/images/"
 
-handpad.display("ScopeDog mk3","with eFinder","ver " + version) 
+handpad.display("ScopeDog mk4","with eFinder","ver " + version) 
 time.sleep(1)
 handpad.display(arr[x,y][0],arr[x,y][1],arr[x,y][2]) 
 
@@ -1482,12 +1516,14 @@ scan.daemon = True
 scan.start()
 time.sleep(0.5)
 
-nexloop = Thread(target=get_nexus)
-nexloop.start()
-time.sleep(0.5)
-
 xloop = Thread(target=scopedog_loop)
 xloop.daemon = True
 xloop.start()
+
+wifiloop = Thread(target=serveWifi)
+wifiloop.start()
+time.sleep(0.5)
+
+
 
 

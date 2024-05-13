@@ -36,7 +36,7 @@ class Nexus:
         #self.ts = load.timescale()
         usbtty = usbAssign.usbAssign()
         dev_name = usbtty.get_Nexus_usb()
-        print ("Nexus DSC is connected to:",dev_name)
+        print ("Nexus DSC is assigned to:",dev_name)
         try:
             self.ser = serial.Serial(dev_name, baudrate=9600)
             self.ser.write(b":P#")
@@ -76,16 +76,16 @@ class Nexus:
                     self.nexus_link = "Wifi"
             except:
                 print("no USB or Wifi link to Nexus")
-                self.handpad.display("Nexus not found", "", "")
+                #self.handpad.display("Nexus not found", "", "")
                 try:
                     print("Trying to start ScopeDog Lite")
                     self.handpad.display("Nexus not found", "Will try", "ScopeDog Lite")
                     time.sleep(1)
-                    subprocess.Popen(["venv-scopedog/bin/python","lite/scopedog_lite_ef.py","run"])
+                    subprocess.Popen(["venv-scopedog/bin/python","scopedog_lite_ef.py","run"])
                 except:
                     print("Failed to start ScopeDog Lite")
                     self.handpad.display("ScopeDog Lite", "Not found", "")
-                sys.exit()
+                sys.exit(0)
 
     def write(self, txt: str) -> None:
         """Write a message to the Nexus DSC
