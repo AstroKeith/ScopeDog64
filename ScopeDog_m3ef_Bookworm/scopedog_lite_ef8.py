@@ -546,6 +546,7 @@ def performSSgoto():
         go_to = False
 
 def driveScope(moveAz,moveAlt):
+    print('azDir,altSide',azDir,altSide)
     azStepper.setEngaged(False)
     azStepper.setTargetPosition(azStepper.getPosition() + int(moveAz * azDir))
     azStepper.setAcceleration(3800)
