@@ -473,7 +473,8 @@ def performSSgoto():
             performSSgoto()
         handpad.display('Finished GoTo'+loop,'Final delta',str(delta_str)[0:4]+' arcmin')
         count = 1
-        go_to = False
+        break
+        #go_to = False
 
 def driveScope(moveAz,moveAlt):
     print('azDir,altSide',azDir,altSide)   

@@ -528,7 +528,7 @@ def performSSgoto():
         time.sleep(0.4)
         handpad.display('GoTo finished','','')
         count = 1
-        go_to = False
+        break
 
 def driveScope(moveAz,moveAlt):
     azStepper.setEngaged(False)
