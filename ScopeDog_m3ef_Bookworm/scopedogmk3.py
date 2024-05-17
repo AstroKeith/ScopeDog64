@@ -42,7 +42,7 @@ import fitsio
 import Nexus_64
 import Coordinates_64
 import Display_64
-
+from collections import OrderedDict
 
 ser = serial.Serial("/dev/ttyAMA2",baudrate=19200)
 
@@ -54,10 +54,11 @@ azCurrentPosition = altCurrentPosition = 0
 azAPSAval = altAPSAval=0
 go_to = False
 moving = False
+calibrate = False
 az_Joy = alt_Joy = False
 home_path = str(Path.home())
 print('homepath',home_path)
-version = "mk3_15ef"
+version = "mk3_16ef" # mk3_16_7
 x = y = 0  # x, y  define what page the display is showing
 deltaAz = deltaAlt = 0
 increment = [0, 1, 5, 1, 1]
@@ -75,14 +76,17 @@ rateTable = ["Sidereal","Lunar","No Drive"]
 rate_str = rateTable[rateInd]
 ts = load.timescale()
 alt_rate = az_rate = 0
+newAzRatio = newAltRatio = azBacklash = altBacklash = lookRatio = 0
 
 try:
     import board
     import busio
     import adafruit_ina260
     i2c = busio.I2C(board.SCL, board.SDA)
-    ina260 = adafruit_ina260.INA260(i2c)
+    
     adafruit_ina260.AveragingCount.COUNT_1024
+    adafruit_ina260.Mode.CONTINUOUS
+    ina260 = adafruit_ina260.INA260(i2c)
     ina = True
 except:
     print("no Power Sensor fitted")
@@ -100,8 +104,9 @@ def scopedog_loop(): # run at 1Hz
             print('go_to True')
             loop = ""
             performSSgoto()
-            if param["Auto GoTo++"] == '1' and rateInd != 1:
+            if param["Auto GoTo++"] == '1' and rateInd != 1 and go_to == True:
                 loop = "++"
+                time.sleep(0.1)
                 handpad.display("Attempting", "Auto GoTo++", "")
                 go_to = True
                 time.sleep(1)
@@ -119,25 +124,28 @@ def scopedog_loop(): # run at 1Hz
             g_ra, g_dec, alt, alt_rate, az_rate = nexus.get_lunar_rates()
         elif rateInd == 2:
             alt_rate = az_rate = 0
-
-        if (az_Joy == False) and (alt_Joy == False) and (go_to == False) and (moving == False):
-            trackInALT(alt_rate)
-            trackInAZ(az_rate)
-                
-        print("************************")
+            
         now = datetime.now()
         nowStr = now.strftime("%d/%m/%Y %H:%M:%S")
         t = ts.now()
         lst = t.gmst + lon/15
-        print("RPI  ",nowStr, "  LST",coordinates.dd2dms(lst).strip('+') )
-        print("RA:  ",coordinates.dd2dms(scopeRa).strip('+'), "   Dec:  ",coordinates.dd2dms(scopeDec))
-        print("           Az         Alt")
-        print('%s    %3s      %s   %s' % ('Angle',coordinates.dd2dms(scopeAz.degrees).strip('+'),coordinates.dd2dms(scopeAlt.degrees),'degrees'))
-        print('%s   %2.3f       %2.3f   %s' % ('Motion',az_rate,alt_rate,'"/sec'))
-        print('%s     %6.4f      %6.4f' % ('APSA',azAPSAval,altAPSAval))
-        print('%s    %3.0f         %3.0f' % ('steps',azSteps,altSteps))
-        print("%s %s   %s %s" % (' GoTo:',go_to,'Move:',moving))
-        print('%s %s   %s %s' % (' Az-joy:',az_Joy,' Alt-joy:',alt_Joy)) 
+
+
+        if (az_Joy == False) and (alt_Joy == False) and (go_to == False) and (moving == False):
+            
+            trackInALT(alt_rate)
+            trackInAZ(az_rate)
+          
+            print("************************")
+            print("RPI  ",nowStr, "  LST",coordinates.dd2dms(lst).strip('+') )
+            print("RA:  ",coordinates.dd2dms(scopeRa).strip('+'), "   Dec:  ",coordinates.dd2dms(scopeDec))
+            print("           Az         Alt")
+            print('%s    %3s      %s   %s' % ('Angle',coordinates.dd2dms(scopeAz.degrees).strip('+'),coordinates.dd2dms(scopeAlt.degrees),'degrees'))
+            print('%s   %2.3f       %2.3f   %s' % ('Motion',az_rate,alt_rate,'"/sec'))
+            print('%s     %6.4f      %6.4f' % ('APSA',azAPSAval,altAPSAval))
+            print('%s    %3.0f         %3.0f' % ('steps',azSteps,altSteps))
+            print("%s %s   %s %s" % (' GoTo:',go_to,'Move:',moving))
+            print('%s %s   %s %s' % (' Az-joy:',az_Joy,' Alt-joy:',alt_Joy)) 
 
         try:
             if ina260.voltage < float(param["volt_alarm"]):
@@ -467,7 +475,124 @@ def performSSgoto():
         count = 1
         go_to = False
 
+def driveScope(moveAz,moveAlt):
+    print('azDir,altSide',azDir,altSide)   
+    azStepper.setEngaged(False)
+    azStepper.setTargetPosition(azStepper.getPosition() + int(moveAz * azDir))
+    azStepper.setAcceleration(3800)
+    azStepper.setVelocityLimit(23000)
+    azStepper.setEngaged(True)
+    AltStepper.setEngaged(False)
+    AltStepper.setTargetPosition(AltStepper.getPosition() + int(moveAlt * altSide))
+    AltStepper.setAcceleration(3800)
+    AltStepper.setVelocityLimit(23000) 
+    AltStepper.setEngaged(True)
+    while azStepper.getIsMoving()==1 or AltStepper.getIsMoving()==1:
+        time.sleep(0.1)
+    time.sleep(1)
+        
+def calibrateDrive():
+    global nexVsolAz, nexVsolAlt, newAzRatio,newAltRatio,azBacklash,altBacklash,solved_altaz, rateInd, altCurrentPosition, azCurrentPosition, moving, calibrate
+    calibrate = True
+    print('calibrating drives')
+    handpad.display('About to perform','Drive','Calibration')
+    moving = True
+    rate = rateInd # remember current drive rate
+    rateInd = 2 # turn drive off
+    time.sleep(0.5)
+    stepsPerDegALT = altRatio/stepAngle
+    stepsPerDegAZ =  azRatio/stepAngle
+    dAz = 30 # this is the angle we will intend to move the scope
+    dAlt = 15
+    moveAz = stepsPerDegALT * -dAz 
+    moveAlt = stepsPerDegAZ * -dAlt
+    print('++++++++++++++')
+    print('Current ratios (Az,Alt):',azRatio,altRatio)
+    print('Performing initialisation')
+    handpad.display('Performing','Initialisation','Please wait')
+    time.sleep(0.5)
+    # first move the scope a little bit to take out any backlash
+    driveScope(moveAz/200,moveAlt/100)
+    # now move the scope by the intended amount 
+    print('Performing First Solve & transit')
+    handpad.display('Performing first','solve','keep clear')
+    go_solve() # measure actual Az & Alt
+    time.sleep(0.1)
+    handpad.display('Performing first','transit','keep clear')
+    azalt0 = solved_altaz
+    nexAltAz0 = nexus.get_altAz()
+    print ('%s %3.3f %2.3f' % ('Nexus Initial Az,Alt:',nexAltAz0[1],nexAltAz0[0]))
+    print ('%s %3.3f %2.3f' % ('Initial Az,Alt:',azalt0[1],azalt0[0]))
+    driveScope(moveAz,moveAlt)
+    go_solve() # re-measure actual Az & Alt
+    azalt1 = solved_altaz
+    nexAltAz1 = nexus.get_altAz()
+    print ('%s %3.3f %2.3f' % ('Nexus Destination Az,Alt:',nexAltAz1[1],nexAltAz1[0]))
+    print ('%s %3.3f %2.3f' % ('Destination Az,Alt:',azalt1[1],azalt1[0]))
+    actDeltaAz = azalt1[1] - azalt0[1]
+    newAzRatio = azRatio * dAz/actDeltaAz
+    actDeltaAlt = azalt1[0] - azalt0[0]
+    newAltRatio = altRatio * dAlt/actDeltaAlt
+    print('%s %2.3f %2.3f %s' % ('Actual delta Az, Alt:',actDeltaAz,actDeltaAlt,'degrees'))
+    print ('%s %4.1f %4.1f' % ('New ratios (Az,Alt):',newAzRatio,newAltRatio))
+    nexDeltaAz = nexAltAz1[1] - nexAltAz0[1]
+    nexDeltaAlt = nexAltAz1[0] - nexAltAz0[0]
+    print('%s %2.3f %2.3f %s' % ('Nexus delta Az, Alt:',nexDeltaAz,nexDeltaAlt,'degrees'))
+    nexVsolAz = actDeltaAz - nexDeltaAz
+    nexVsolAlt = actDeltaAlt - nexDeltaAlt
+    print ('%s %2.3f %2.3f %s' % ('Nexus vs Solve Az, Alt:',nexVsolAz,nexVsolAlt,'degrees'))
+    time.sleep(1)
+    print('Performing Final Transit & Solve')
+    handpad.display('Performing final','transit & solve',' ')
+    # now reverse the scope by the same amount
+    driveScope(-moveAz,-moveAlt)
+    go_solve() # re-measure actual Az & Alt, should be same as start, except for backlash
+    azalt2 = solved_altaz
+    nexAltAz2 = nexus.get_altAz()
+    print ('%s %3.3f %2.3f' % ('Nexus Returned to start Az,Alt:',nexAltAz2[1],nexAltAz2[0]))
+    print ('%s %3.3f %2.3f' % ('Returned to start Az,Alt:',azalt2[1],azalt2[0]))
+    actDeltaAz = azalt1[1] - azalt2[1]
+    azBacklash = 60 * (dAz - actDeltaAz)
+    actDeltaAlt = azalt1[0] - azalt2[0]
+    altBacklash = 60 * (dAlt - actDeltaAlt)
+    print('%s %2.3f %2.3f %s' % ('Actual Return delta Az, Alt:',actDeltaAz,actDeltaAlt,'degrees'))
+    print('%s %3.3f %3.3f %s' % ('Measured backlash   Az, Alt:', azBacklash, altBacklash,'arcmin'))
+    handpad.display('B.L arcmin','Az:'+str(azBacklash)[0:6],'Alt:'+str(altBacklash)[0:6])
+    rateInd = rate
+    moving = False
+    calibrate = False
 
+def compareRatios(s):
+    global lookRatio
+    lookRatio = lookRatio + s
+    if lookRatio > 2:
+        lookRatio = 0
+    elif lookRatio < 0:
+        lookRatio = 2
+    if lookRatio == 0:
+        handpad.display('old/new ratios','Az: '+str(int(azRatio))+'/'+str(int(newAzRatio)),'Alt: '+str(int(altRatio))+'/'+str(int(newAltRatio)))
+    elif lookRatio == 1:
+        handpad.display('Backlash','Az: '+str(int(azBacklash)),'Alt: '+str(int(altBacklash)))
+    else:
+        handpad.display('Nexus error','Az: '+str(nexVsolAz * 60)[0:6],'Alt: '+str(nexVsolAlt * 60)[0:6])
+
+def saveRatios():
+    global azRatio, altRatio, stepsPerArcsecAZ, stepsPerArcsecALT
+    if lookRatio != 0:
+        return
+    keyNew = d + "_Az_Gear_Ratio"
+    configCopy.update({keyNew:str(newAzRatio)})
+    keyNew = d + "_Alt_Gear_Ratio"
+    configCopy.update({keyNew:str(newAltRatio)})
+    azRatio = newAzRatio
+    altRatio = newAltRatio
+    with open(home_path+"/ScopeDog.config","w") as h:
+        for key, value in configCopy.items():
+            h.write("%s:%s\n" % (key,value))
+    stepsPerArcsecAZ = azRatio/(stepAngle * 3600) ## of steps per arcsec
+    stepsPerArcsecALT = altRatio/(stepAngle * 3600) ## of steps per srcsec
+    handpad.display('New Drive Ratios','saved, and','now in use')
+        
 def xy2rd(x, y):  # returns the RA & Dec equivalent to a camera pixel x,y
     result = subprocess.run(
         [
@@ -573,7 +698,7 @@ def solveImage():
     )
     elapsed_time = time.time() - start_time
     print("solve elapsed time " + str(elapsed_time)[0:4] + " sec\n")
-    print(result.stdout)  # this line added to help debug.
+    #print(result.stdout)  # this line added to help debug.
     result = str(result.stdout)
     if "solved" not in result:
         print("Bad Luck - Solve Failed")
@@ -699,7 +824,7 @@ def measure_offset():
     offset_flag = True
     handpad.display("started capture", "", "")
     capture()
-    imgDisplay()
+    #imgDisplay()
     solveImage()
     if solve == False:
         handpad.display("solve failed", "", "")
@@ -733,8 +858,8 @@ def left_right(v):
             arr[0,3][1] = "Nexus Aligned"
         arr[0,3][2] = "Nex:" + p
     handpad.display(arr[x, y][0], arr[x, y][1], arr[x, y][2])
-    if x == 2 and y == 3: 
-        handpad.display(arr[x, y][0], arr[x, y][1], arr[x, y][2])
+    #if x == 2 and y == 3: 
+    #    handpad.display(arr[x, y][0], arr[x, y][1], arr[x, y][2])
 
 def up_down_inc(i, sign):
     global increment, param
@@ -804,26 +929,29 @@ def capture():
 
 
 def go_solve():
-    global x, y, solve, arr
+    global x, y, solve, arr, calibrate
     if camera.camType == "not found":
-        handpad.display("no camera","","")
+        handpad.display("no camera"," "," ")
         time.sleep(2)
         return
     new_arr = nexus.read_altAz(arr)
     arr = new_arr
-    handpad.display("Image capture", "", "")
+    handpad.display("Image capture"," "," ")
     capture()
     #imgDisplay()
-    handpad.display("Plate solving", "", "")
+    handpad.display("Plate solving"," "," ")
     solveImage()
     if solve == True:
-        handpad.display("Solved", "", "")
+        handpad.display("Solved"," "," ")
     else:
-        handpad.display("Not Solved", "", "")
+        handpad.display("Not Solved"," "," ")
+        time.sleep(2)
         return
-    x = 0
-    y = 1
-    handpad.display(arr[0, 1][0], arr[0, 1][1], arr[0, 1][2])
+    if calibrate == False:
+        print('here')
+        x = 0
+        y = 1
+        handpad.display(arr[0, 1][0], arr[0, 1][1], arr[0, 1][2])
 
 
 def goto():
@@ -861,6 +989,23 @@ def goto_moon():
         time.sleep(2)
         return
     go_to = True
+
+def setGoto():
+    global align_count, solve, sync_count, param, offset_flag, arr
+    new_arr = nexus.read_altAz(arr)
+    arr = new_arr
+    handpad.display('Attempting','Set ','')
+    capture()
+    solveImage()
+    if solve == False:
+        handpad.display(arr[x, y][0], "Solved Failed", arr[x, y][2])
+        time.sleep(2)
+        return
+    align_ra = ":Sr" + coordinates.dd2dms((solved_radec)[0]) + "#"
+    align_dec = ":Sd" + coordinates.dd2aligndms((solved_radec)[1]) + "#"
+    reply = nexus.get(align_ra)
+    reply = nexus.get(align_dec)
+    handpad.display(arr[x, y][0], "Target Set", arr[x, y][2])
 
 def rpt_goto():
     reply = nexus.get(":MS#")
@@ -904,7 +1049,7 @@ def reader():
             if handpad.get_box() in select.select([handpad.get_box()], [], [], 0)[0]:
                 button = handpad.get_box().readline().decode("ascii")
                 button = re.sub("\s","",button)
-                print(button,len(button))
+                #print(button,len(button))
                 if button == "20":
                     exec(arr[x, y][7])
                 elif button == "18":
@@ -989,8 +1134,8 @@ def vLimit_adj(i):
 
 handpad = Display_64.Handpad(version)
 coordinates = Coordinates_64.Coordinates()
-nexus = Nexus_64.Nexus(handpad, coordinates)
-nexus.read()
+
+
 
 updateFirmware()
 
@@ -1012,8 +1157,12 @@ if scope_select.value:
 print('switch is ',d)
 
 parameters = dict()
+configCopy = OrderedDict()
+
 with open(home_path+"/ScopeDog.config") as f:
     for line in f:
+        configLine = line.strip("\n").split(":")
+        configCopy.update({configLine[0]:configLine[1]})
         if line[0] == d:
             if line.find("False") > 0:
                 if(run==False):
@@ -1022,6 +1171,8 @@ with open(home_path+"/ScopeDog.config") as f:
                     exit()
             line = line[2:].strip("\n").split(":")
             parameters[line[0]] = line[1] 
+nexus = Nexus_64.Nexus(handpad, coordinates)
+nexus.read()
 
 azRatio = float(parameters['Az_Gear_Ratio'])
 altRatio = float(parameters['Alt_Gear_Ratio'])
@@ -1050,6 +1201,7 @@ if 'A' in parameters['Az_Direction']:
 else:
     azDir = 1.0
     max=-20000000
+print('azDir:',azDir,'  altSide:',altSide)
 if 'checked' in parameters['flip_AltF']:
     flip_AltF=1
 else:
@@ -1159,7 +1311,7 @@ aligns = [
     "left_right(-1)",
     "left_right(1)",
     "align()",
-    "align()",
+    "setGoto()",
 ]
 summary = [
     "",
@@ -1282,11 +1434,22 @@ power = [
     "",
     "",
 ]
+driveCalibrate = [
+    "Drive",
+    "Calibration",
+    "Utility",
+    "compareRatios(1)",
+    "compareRatios(-1)",
+    "left_right(-1)",
+    "left_right(1)",
+    "calibrateDrive()",
+    "saveRatios()",
+]
 arr = np.array(
     [
-        [scope, delta, sol, aligns, power],
-        [summary, exp, gn, mode, goto_do],
-        [status,polar,reset,rate,bright]
+        [scope, delta, sol, aligns, power, power],
+        [summary, exp, gn, mode, goto_do, goto_do],
+        [status, polar, reset, rate, driveCalibrate, bright]
     ]
 )
 update_summary()
