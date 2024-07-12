@@ -39,6 +39,7 @@ class Nexus:
         print ("Nexus DSC is assigned to:",dev_name)
         try:
             self.ser = serial.Serial(dev_name, baudrate=9600)
+            time.sleep(0.1)
             self.ser.write(b":P#")
             time.sleep(0.1)
             p = str(self.ser.read(self.ser.in_waiting), "ascii")
