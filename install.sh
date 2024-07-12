@@ -37,8 +37,7 @@ sudo apt-get install -y phidget22networkserver
 python -m venv /home/scopedog/venv-scopedog --system-site-packages
 
 echo "ScopeDog virtual environment setup"
-
-venv-scopedog/bin/python venv-scopedog/bin/pip install astropy pyfits
+venv-scopedog/bin/python venv-scopedog/bin/pip install git+https://github.com/esa/tetra3.gitvenv-scopedog/bin/python venv-scopedog/bin/pip install astropy pyfits
 venv-scopedog/bin/python venv-scopedog/bin/pip install adafruit-circuitpython-ina260
 
 # Lets install the astrometry.net package
