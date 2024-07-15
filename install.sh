@@ -100,6 +100,20 @@ echo ""
 cp /home/scopedog/ScopeDog64/ScopeDog_m3ef_Bookworm/*.* /home/scopedog
 mv *.jp* Solver
 
+sudo apt install -y samba samba-common-bin
+sudo tee -a /etc/samba/smb.conf > /dev/null <<EOT
+[efindershare]
+path = /home/scopedog
+writeable=Yes
+create mask=0777
+directory mask=0777
+public=no
+EOT
+username="scopedog"
+pass="scopedog"
+(echo $pass; sleep 1; echo $pass) | sudo smbpasswd -a -s $username
+sudo systemctl restart smbd
+
 echo "ScopeDog files installed"
 
 # Lets set up the webpage server
