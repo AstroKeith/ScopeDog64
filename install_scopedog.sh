@@ -20,6 +20,8 @@ echo 'dtoverlay=uart2' | sudo tee -a /boot/firmware/config.txt > /dev/null
 echo " "
 echo "**********************************"
 
+sudo apt-get install -y gpsd
+
 echo " "
 echo "*****************************************************************************"
 echo "Installing some of the new astrometry packages"
@@ -51,6 +53,7 @@ python -m venv /home/scopedog/venv-scopedog --system-site-packages
 
 venv-scopedog/bin/python venv-scopedog/bin/pip install git+https://github.com/esa/tetra3.gitvenv-scopedog/bin/python venv-scopedog/bin/pip install astropy pyfits
 venv-scopedog/bin/python venv-scopedog/bin/pip install adafruit-circuitpython-ina260
+venv-scopedog/bin/python venv-scopedog/bin/pip install gps3
 
 echo " "
 echo "*****************************************************************************"
