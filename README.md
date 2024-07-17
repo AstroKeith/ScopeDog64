@@ -1,5 +1,4 @@
 # ScopeDog
-*************Temporary takedown of install script ++++++++++++ while I test the shanges
 
 code for AltAz telescopes (primarily Dobsonians) to provide tracking, goto and utilise plate-solving to improve pointing accuracy.
 
