@@ -40,7 +40,7 @@ class Nexus:
         try:
             self.ser = serial.Serial(dev_name, baudrate=9600)
             self.ser.flush()
-            time.sleep(0.1)
+            time.sleep(0.2)
             self.ser.write(b":P#")
             time.sleep(0.1)
             p = str(self.ser.read(self.ser.in_waiting), "ascii")
@@ -55,7 +55,7 @@ class Nexus:
             )
             self.NexStr = "connected"
             self.handpad.display("Found Nexus", "via USB", "")
-            time.sleep(1)
+            time.sleep(0.5)
             self.nexus_link = "USB"
         except:
             self.HOST = "10.0.0.1"
@@ -185,18 +185,7 @@ class Nexus:
             self.short = ra[0]+ra[1]+dec[0]+dec[1]
         except:
             print('read_altAz error:',ra,dec)
-        '''
-        print(
-            "Nexus RA:  ",
-            self.coordinates.hh2dms(self.radec[0]),
-            "  Dec: ",
-            self.coordinates.dd2dms(self.radec[1]),
-        )
-        '''
-        if arr is not None:
-            arr[0, 1][0] = "Nex: RA " + self.coordinates.hh2dms(self.radec[0])
-            arr[0, 1][1] = "   Dec " + self.coordinates.dd2dms(self.radec[1])
-        
+
         if arr is not None:
             return arr
 
