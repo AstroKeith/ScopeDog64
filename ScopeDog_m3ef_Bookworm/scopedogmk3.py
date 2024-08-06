@@ -26,7 +26,7 @@ from gpiozero import LED, Button
 import serial
 from threading import Thread
 import subprocess
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import psutil
 import shutil
 from shutil import copyfile
@@ -43,6 +43,7 @@ import Nexus_64
 import Coordinates_64
 import Display_64
 from collections import OrderedDict
+import tetra3
 
 ser = serial.Serial("/dev/ttyAMA2",baudrate=19200)
 
@@ -58,7 +59,7 @@ calibrate = False
 az_Joy = alt_Joy = False
 home_path = str(Path.home())
 print('homepath',home_path)
-version = "mk3_16ef" # mk3_16_7
+version = "mk3_17ef" # mk3_17_1
 x = y = 0  # x, y  define what page the display is showing
 deltaAz = deltaAlt = 0
 increment = [0, 1, 5, 1, 1]
@@ -386,7 +387,7 @@ def trackInAZ(azMotion):
         acclVal=10
     azStepper.setTargetPosition(azStepper.getPosition()+((int)(trackVal) * -(int)(azDir)))
     azStepper.setAcceleration(acclVal)
-    azStepper.setVelocityLimit((int)(abs(trackVal*1.15)))
+    azStepper.setVelocityLimit((int)(abs(trackVal*1.05)))
     azStepper.setEngaged(True)
 
 def trackInALT(altMotion):
@@ -413,7 +414,7 @@ def trackInALT(altMotion):
         acclVal=10
     AltStepper.setTargetPosition(AltStepper.getPosition()+((int)(trackVal) * -(int)(altSide)))
     AltStepper.setAcceleration(acclVal)
-    AltStepper.setVelocityLimit((int)(abs(trackVal*1.15)))
+    AltStepper.setVelocityLimit((int)(abs(trackVal*1.05)))
     AltStepper.setEngaged(True)
 
 def calculateGoToSteps():
@@ -851,7 +852,7 @@ def up_down(v):
 
 
 def left_right(v):
-    global y
+    global y, arr
     y = y + v
     if x == 0 and y == 3:
         p = nexus.get(":GW#")
@@ -863,7 +864,7 @@ def left_right(v):
     #    handpad.display(arr[x, y][0], arr[x, y][1], arr[x, y][2])
 
 def up_down_inc(i, sign):
-    global increment, param
+    global increment, param, arr
     arr[x, y][1] = int(float(arr[x, y][1])) + increment[i] * sign
     param[arr[x, y][0]] = float(arr[x, y][1])
     handpad.display(arr[x, y][0], arr[x, y][1], arr[x, y][2])
@@ -872,7 +873,7 @@ def up_down_inc(i, sign):
 
 
 def flip():
-    global param
+    global param, arr
     arr[x, y][1] = 1 - int(float(arr[x, y][1]))
     param[arr[x, y][0]] = str((arr[x, y][1]))
     handpad.display(arr[x, y][0], arr[x, y][1], arr[x, y][2])
@@ -885,7 +886,7 @@ def toggleDrive():
 
     
 def change_rate(c):
-    global rateInd, rate_str
+    global rateInd, rate_str, arr
     rateInd = rateInd + c
     if rateInd > 2:
         rateInd = 0
@@ -896,7 +897,7 @@ def change_rate(c):
     handpad.display(arr[x, y][0], arr[x, y][1], arr[x, y][2])
     
 def update_summary():
-    global param
+    global param, arr
     arr[1, 0][0] = "Ex:" + str(param["Exposure"]) + " Gn:" + str(param["Gain"])
     arr[1, 0][1] = "Test: " + str(bool(float(param["Test mode"])))
     arr[1, 0][2] = "GoTo++: " +  str(bool(float(param["Auto GoTo++"])))
@@ -1050,7 +1051,7 @@ def reader():
             if handpad.get_box() in select.select([handpad.get_box()], [], [], 0)[0]:
                 button = handpad.get_box().readline().decode("ascii")
                 button = re.sub("\s","",button)
-                #print(button,len(button))
+                print(button,len(button))
                 if button == "20":
                     exec(arr[x, y][7])
                 elif button == "18":
@@ -1130,6 +1131,94 @@ def vLimit_adj(i):
     arr[x, y][0] = "V:12.3" + " Vlim:" + param["volt_alarm"]
     save_param()
     refresh()
+
+def loopFocus():
+    print('start focus')
+    capture()
+    #solveImage()
+    with Image.open(destPath + "capture.jpg") as img:
+        img = img.convert(mode='L')
+        np_image = np.asarray(img, dtype=np.uint8)
+        centroids = tetra3.get_centroids_from_image(
+            np_image,
+            downsample=2,
+            )
+
+        print(centroids[0])
+        print(centroids.size/2, 'centroids found ')
+
+        w=16
+        x1=int(centroids[0][0]-w)
+        if x1 < 0:
+            x1 = 0
+        x2=int(centroids[0][0]+w)
+        if x2 > img.size[1]:
+            x2 = img.size[1]
+        y1=int(centroids[0][1]-w)
+        if y1 < 0:
+            y1 = 0
+        y2=int(centroids[0][1]+w)
+        if y2 > img.size[0]:
+            y2 = img.size[0]
+        fnt = ImageFont.truetype(home_path+"/text.ttf",8)
+
+        patch = np_image[x1:x2,y1:y2]
+        im = Image.fromarray(np.uint8(patch),'L')
+        im = im.resize((32,32),Image.LANCZOS)
+        im = im.convert(mode='1')
+
+        imgPlot = Image.new("1",(32,32))
+        shape=[]
+        #print('x-range')
+        for h in range (x1,x2):
+            #print(np_image[h][y1+w],end=' ')
+            shape.append(((h-x1),int((255-np_image[h][y1+w])/8)))
+        draw = ImageDraw.Draw(imgPlot)
+        draw.line(shape,fill="white",width=1)
+        #print()
+        shape=[]
+        #print('y-range')
+        for h in range (y1,y2):
+            #print(np_image[x1+w][h],end=' ')
+            shape.append(((h-y1),int((255-np_image[x1+w][h])/8)))
+
+        draw = ImageDraw.Draw(imgPlot)
+        draw.line(shape,fill="white",width=1)
+
+        midLine = ""
+        y = int((255-np.max(np_image)/2)/8)
+        np_plot = np.array(imgPlot)
+        for x in range (0,31):
+            val = str(int(np_plot[y][x]))
+            midLine = midLine + val
+
+        txtPlot = Image.new("1",(50,32))
+        txt = ImageDraw.Draw(txtPlot)
+        txt.text((0,0),"Pk="+ str(np.max(np_image)),font = fnt,fill='white')
+        txt.text((0,10),"No="+ str(int(centroids.size/2)),font = fnt,fill='white')
+        txt.text((0,20),"Ex="+str(param['Exposure']),font = fnt,fill='white')
+        screen = Image.new("1",(128,32))
+        screen.paste(im,box=(0,0))
+        screen.paste(txtPlot,box=(35,0))
+        screen.paste(imgPlot,box=(80,0))
+        #screen.show()
+        np_img = np.asarray(screen, dtype=np.uint8)
+        ch = ''
+        for page in range (0,4):
+            for x in range(0,128):
+                digit = byte = ""
+                for bit in range (0,8):
+                    digit = str(np_img[page*8+bit][x])
+                    byte = digit + byte
+                ch = ch + str(int(byte,2))+','
+        ch = ch.strip(',')
+        handpad.dispWrite(ch+'\n')
+
+def adjExp(i):
+    global param
+    param['Exposure'] = ('%.1f' % (float(param['Exposure']) + i*0.2))
+    update_summary()
+    loopFocus()
 
 # here starts the main code
 
@@ -1431,7 +1520,7 @@ power = [
     "vLimit_adj(1)",
     "vLimit_adj(-1)",
     "left_right(-1)",
-    "refresh()",
+    "left_right(1)",
     "",
     "",
 ]
@@ -1446,9 +1535,20 @@ driveCalibrate = [
     "calibrateDrive()",
     "saveRatios()",
 ]
+focus = [
+    "Focus",
+    "Utility",
+    "OK to grab frame",
+    "adjExp(1)",
+    "adjExp(-1)",
+    "left_right(-1)",
+    "",
+    "loopFocus()",
+    "loopFocus()",
+]
 arr = np.array(
     [
-        [scope, delta, sol, aligns, power, power],
+        [scope, delta, sol, aligns, power, focus],
         [summary, exp, gn, mode, goto_do, goto_do],
         [status, polar, reset, rate, driveCalibrate, bright]
     ]
