@@ -20,7 +20,8 @@ Full details at [
 - The code for the hand box Pico is main_eF4_1.py
 - The install script enables VNC which can be reached from a browser at scopedogmk3.local
 - If a Nexus DSC is connected and the hand box is found, the ScopeDog starts automatically at power up.
-- A beta variant that runs without a Nexus DSC and encoders is now available. Refer to the readme in the /lite folder 
+- A 'Lite' variant that runs without a Nexus DSC and encoders is now available. Refer to the readme in the /lite folder.
+- An attempt to start the Lite variant will be made if no Nexus DSC is found on starting scopedogmk3.py.
   
 ## Operation
 Refer to system description at  [
