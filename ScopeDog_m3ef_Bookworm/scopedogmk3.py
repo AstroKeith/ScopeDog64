@@ -59,10 +59,10 @@ calibrate = False
 az_Joy = alt_Joy = False
 home_path = str(Path.home())
 print('homepath',home_path)
-version = "mk3_17ef" # mk3_17_1
+version = "mk3_17ef" # mk3_17_4
 x = y = 0  # x, y  define what page the display is showing
 deltaAz = deltaAlt = 0
-increment = [0, 1, 5, 1, 1]
+increment = [0, 0.1, 5, 1, 1]
 offset_flag = False
 align_count = 0
 offset = 640, 480
@@ -169,10 +169,10 @@ def scopedog_loop(): # run at 1Hz
             else:
                 line_3 = '%s%3d %s%2d' % ('Az:',scopeAz.degrees,'Alt:',scopeAlt.degrees)
             handpad.display(line_1.ljust(15)+rate_str[0],line_2,line_3)
-        elif (x == 0 and y == 4 and ina == True):
-            arr[0,4][0] = "V:%.1f Vlim:%s" % (ina260.voltage,param["volt_alarm"])
-            arr[0,4][1] = "%.0f mA" % (ina260.current)
-            arr[0,4][2] = "%.1f AHr" % (ampHour)
+        elif (x == 0 and y == 3 and ina == True):
+            arr[0,3][0] = "V:%.1f Vlim:%s" % (ina260.voltage,param["volt_alarm"])
+            arr[0,3][1] = "%.0f mA" % (ina260.current)
+            arr[0,3][2] = "%.1f AHr" % (ampHour)
             refresh()
         else:
             if lowBattery == True:
@@ -721,9 +721,9 @@ def solveImage():
     ra, dec, d = solvedPos.apparent().radec(coordinates.get_ts().now())
     solved_radec = ra.hours, dec.degrees
     nexus.set_scope_alt(solved_altaz[0] * math.pi / 180)
-    arr[0, 2][0] = "Sol: RA " + coordinates.hh2dms(solved_radec[0])
-    arr[0, 2][1] = "   Dec " + coordinates.dd2dms(solved_radec[1])
-    arr[0, 2][2] = "time: " + str(elapsed_time)[0:4] + " s"
+    arr[0, 1][0] = "Sol: RA " + coordinates.hh2dms(solved_radec[0])
+    arr[0, 1][1] = "   Dec " + coordinates.dd2dms(solved_radec[1])
+    arr[0, 1][2] = "time: " + str(elapsed_time)[0:4] + " s"
     solve = True
     deltaCalc()
 
@@ -754,11 +754,11 @@ def deltaCalc():
     )  # actually this is delta'x' in arcminutes
     deltaAlt = solved_altaz[0] - nexus.get_altAz()[0]
     deltaAlt = 60 * (deltaAlt)  # in arcminutes
-    deltaXstr = "{: .2f}".format(float(deltaAz))
-    deltaYstr = "{: .2f}".format(float(deltaAlt))
-    arr[0, 1][0] = "Delta: x= " + deltaXstr
-    arr[0, 1][1] = "       y= " + deltaYstr
-    arr[0, 1][2] = "time: " + str(elapsed_time)[0:4] + " s"
+    #deltaXstr = "{: .2f}".format(float(deltaAz))
+    #deltaYstr = "{: .2f}".format(float(deltaAlt))
+    #arr[0, 1][0] = "Delta: x= " + deltaXstr
+    #arr[0, 1][1] = "       y= " + deltaYstr
+    #arr[0, 1][2] = "time: " + str(elapsed_time)[0:4] + " s"
 
 
 def do_align():
@@ -802,17 +802,17 @@ def align():
     print("Align status reply ", p)
     if p != "AT2":
         align_count += 1
-        arr[0, 3][0] = "'OK' aligns"
-        arr[0, 3][1] = "Not aligned"
-        arr[0, 3][2] = ' count: '+str(align_count)  
+        arr[0, 2][0] = "'OK' aligns"
+        arr[0, 2][1] = "Not aligned"
+        arr[0, 2][2] = ' count: '+str(align_count)  
     else:
         if p == "AT2":  
-            arr[0, 3][0] = "'OK' syncs"
-            arr[0, 3][1] = "Nexus is aligned"
-            arr[0, 3][2] = ' count: '+str(sync_count)
+            arr[0, 2][0] = "'OK' syncs"
+            arr[0, 2][1] = "Nexus is aligned"
+            arr[0, 2][2] = ' count: '+str(sync_count)
             sync_count += 1
             nexus.set_aligned(True)
-    deltaCalc()
+    #deltaCalc()
     handpad.display(arr[x,y][0],arr[x,y][1],arr[x,y][2])
     return
 
@@ -840,7 +840,6 @@ def measure_offset():
     save_param()
     offset_str = dxstr + "," + dystr
     arr[2,1][1] = "new " + offset_str
-    arr[2,2][1] = "new " + offset_str
     handpad.display(arr[2,1][0], arr[2,1][1], star_name + " found")
     offset_flag = False
 
@@ -857,15 +856,15 @@ def left_right(v):
     if x == 0 and y == 3:
         p = nexus.get(":GW#")
         if p == "AT2":
-            arr[0,3][1] = "Nexus Aligned"
-        arr[0,3][2] = "Nex:" + p
+            arr[0,2][1] = "Nexus Aligned"
+        arr[0,2][2] = "Nex:" + p
     handpad.display(arr[x, y][0], arr[x, y][1], arr[x, y][2])
     #if x == 2 and y == 3: 
     #    handpad.display(arr[x, y][0], arr[x, y][1], arr[x, y][2])
 
 def up_down_inc(i, sign):
     global increment, param, arr
-    arr[x, y][1] = int(float(arr[x, y][1])) + increment[i] * sign
+    arr[x, y][1] = int(((float(arr[x, y][1])) + increment[i] * sign)*10)/10
     param[arr[x, y][0]] = float(arr[x, y][1])
     handpad.display(arr[x, y][0], arr[x, y][1], arr[x, y][2])
     update_summary()
@@ -1018,7 +1017,6 @@ def reset_offset():
     param["d_y"] = 0
     offset_str = "0,0"
     arr[2,1][1] = "new " + offset_str
-    arr[2,2][1] = "new " + offset_str
     handpad.display(arr[x, y][0], arr[x, y][1], arr[x, y][2])
     save_param()
 
@@ -1133,6 +1131,7 @@ def vLimit_adj(i):
     refresh()
 
 def loopFocus():
+    global x,y
     print('start focus')
     capture()
     #solveImage()
@@ -1144,9 +1143,14 @@ def loopFocus():
             downsample=2,
             )
 
-        print(centroids[0])
         print(centroids.size/2, 'centroids found ')
-
+        if centroids.size < 1:
+            handpad.display('No stars found','','')
+            time.sleep(3)
+            handpad.display(arr[x, y][0], arr[x, y][1], arr[x, y][2])
+            return
+        print(centroids[0])
+        
         w=16
         x1=int(centroids[0][0]-w)
         if x1 < 0:
@@ -1182,15 +1186,6 @@ def loopFocus():
             #print(np_image[x1+w][h],end=' ')
             shape.append(((h-y1),int((255-np_image[x1+w][h])/8)))
 
-        draw = ImageDraw.Draw(imgPlot)
-        draw.line(shape,fill="white",width=1)
-
-        midLine = ""
-        y = int((255-np.max(np_image)/2)/8)
-        np_plot = np.array(imgPlot)
-        for x in range (0,31):
-            val = str(int(np_plot[y][x]))
-            midLine = midLine + val
 
         txtPlot = Image.new("1",(50,32))
         txt = ImageDraw.Draw(txtPlot)
@@ -1205,14 +1200,15 @@ def loopFocus():
         np_img = np.asarray(screen, dtype=np.uint8)
         ch = ''
         for page in range (0,4):
-            for x in range(0,128):
+            for column in range(0,128):
                 digit = byte = ""
                 for bit in range (0,8):
-                    digit = str(np_img[page*8+bit][x])
+                    digit = str(np_img[page*8+bit][column])
                     byte = digit + byte
                 ch = ch + str(int(byte,2))+','
         ch = ch.strip(',')
         handpad.dispWrite(ch+'\n')
+        time.sleep(1)
 
 def adjExp(i):
     global param
@@ -1367,7 +1363,7 @@ scope = [
     "up_down(1)",
     "refresh()",
     "left_right(1)",
-    "go_solve()",
+    "align()",
     "rpt_goto()",
 ]
 delta = [
@@ -1489,7 +1485,7 @@ polar = [
     "left_right(-1)",
     "left_right(1)",
     "measure_offset()",
-    "measure_offset()",
+    "reset_offset()",
 ]
 reset = [
     "'OK' Resets",
@@ -1548,9 +1544,9 @@ focus = [
 ]
 arr = np.array(
     [
-        [scope, delta, sol, aligns, power, focus],
-        [summary, exp, gn, mode, goto_do, goto_do],
-        [status, polar, reset, rate, driveCalibrate, bright]
+        [scope, sol, aligns, power, focus],
+        [summary, exp, gn, mode, goto_do],
+        [status, polar, rate, driveCalibrate, bright]
     ]
 )
 update_summary()
@@ -1559,9 +1555,9 @@ offset_str = dxstr + "," + dystr
 new_arr = nexus.read_altAz(arr)
 arr = new_arr
 if nexus.is_aligned() == True:
-    arr[0, 3][0] = "'OK' syncs"
-    arr[0, 3][1] = "Nexus is aligned"
-    arr[0, 3][2] = '- count: '+str(align_count)
+    arr[0, 2][0] = "'OK' syncs"
+    arr[0, 2][1] = "Nexus is aligned"
+    arr[0, 2][2] = '- count: '+str(align_count)
 
 if 'ASI' in param["Camera Type ('QHY' or 'ASI')"]:
     import ASICamera_64
