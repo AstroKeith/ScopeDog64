@@ -51,7 +51,8 @@ echo "**************************************************************************
 
 python -m venv /home/scopedog/venv-scopedog --system-site-packages
 
-venv-scopedog/bin/python venv-scopedog/bin/pip install git+https://github.com/esa/tetra3.gitvenv-scopedog/bin/python venv-scopedog/bin/pip install astropy pyfits
+venv-scopedog/bin/python venv-scopedog/bin/pip install git+https://github.com/esa/tetra3.git
+venv-scopedog/bin/python venv-scopedog/bin/pip install astropy pyfits
 venv-scopedog/bin/python venv-scopedog/bin/pip install adafruit-circuitpython-ina260
 venv-scopedog/bin/python venv-scopedog/bin/pip install gps3
 
