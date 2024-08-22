@@ -1,6 +1,6 @@
 # ScopeDog
 
-![Uploading IMG_5439.jpeg…]()
+![IMG_5439](https://github.com/user-attachments/assets/37c39503-d6f9-4fa0-a640-b8cd1eb91413)
 
 code for AltAz telescopes (primarily Dobsonians) to provide tracking, goto and utilise plate-solving to improve pointing accuracy.
 
