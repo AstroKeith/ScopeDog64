@@ -14,6 +14,8 @@ Requires:
 Full details at [
 ](https://astrokeith.com/equipment/scopedog/)https://astrokeith.com/equipment/scopedog/
 
+Note: As of September 2024 uart3 is used instead of uart0. Old hardware builds will need to be modified (switch two pairs of wires on the GPIO)
+
 # Install
 - Use Raspberry Pi Imager to create a fresh 32gb sdCard with the latest 64bit Bookworm OS. Make sure username is 'scopedog' and hostname 'scopedogmk3'
 - Boot the Pi and from the command line run the install.sh script. This will install all dependencies (Phidget support, astrometry.net, camera drivers, webpage server, etc) plus the ScopeDog specific code.
