@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "ScopeDog install"
-echo "This will take some time! ( > 30 minutes)"
+echo "This may take some time! ( > 30 minutes)"
 echo " "
 echo "*****************************************************************************"
 
@@ -17,6 +17,8 @@ HOME=/home/scopedog
 echo "***********************************"
 echo " "
 echo 'dtoverlay=uart2' | sudo tee -a /boot/firmware/config.txt > /dev/null
+echo 'dtoverlay=uart3' | sudo tee -a /boot/firmware/config.txt > /dev/null
+
 echo " "
 echo "**********************************"
 
