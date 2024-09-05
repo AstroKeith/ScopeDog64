@@ -59,7 +59,7 @@ calibrate = False
 az_Joy = alt_Joy = False
 home_path = str(Path.home())
 print('homepath',home_path)
-version = "mk3_17ef" # mk3_17_4
+version = "mk3_17ef" # mk3_17_5
 x = y = 0  # x, y  define what page the display is showing
 deltaAz = deltaAlt = 0
 increment = [0, 0.1, 5, 1, 1]
@@ -168,7 +168,10 @@ def scopedog_loop(): # run at 1Hz
                 blink = not blink
             else:
                 line_3 = '%s%3d %s%2d' % ('Az:',scopeAz.degrees,'Alt:',scopeAlt.degrees)
-            handpad.display(line_1.ljust(15)+rate_str[0],line_2,line_3)
+            if nexus.is_aligned == True:
+                handpad.display(line_1.ljust(15)+rate_str[0],line_2,line_3)
+            else:
+                handpad.display(line_1.ljust(15)+"!",line_2,line_3)
         elif (x == 0 and y == 3 and ina == True):
             arr[0,3][0] = "V:%.1f Vlim:%s" % (ina260.voltage,param["volt_alarm"])
             arr[0,3][1] = "%.0f mA" % (ina260.current)
