@@ -1089,7 +1089,7 @@ def reader():
 
 
 def updateFirmware():
-    filenames = glob.glob("/media/pi/*/*_new") # looks for new files on a USB stick
+    filenames = glob.glob("/media/scopedog/*/*_new") # looks for new files on a USB stick
     if len(filenames) >0:
         print('Found on USB stick: ',filenames)
         try:
