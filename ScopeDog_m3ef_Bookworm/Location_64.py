@@ -5,7 +5,10 @@ from skyfield.api import Star, wgs84
 import os
 import Display_64
 import Coordinates_lite
+import usbAssign
 from gps3 import agps3
+import sys
+
 
 class Geoloc:
     """The Geoloc utility class"""
@@ -24,9 +27,14 @@ class Geoloc:
         self.lat = 0
         self.earth,self.moon = coordinates.get_earth(), coordinates.get_moon()
         self.ts = coordinates.get_ts()
-
+        
 
     def getGps(self):
+        usbtty = usbAssign.usbAssign()
+        if usbtty.get_GPS_usb() == "not found":
+            print('No usb dongle found')
+            self.handpad.display('GPS dongle','Not found','')
+            sys.exit()
         gps_socket = agps3.GPSDSocket()
         data_stream = agps3.DataStream()
         gps_socket.connect()
@@ -36,7 +44,7 @@ class Geoloc:
                 print('trying for GPS Lock')
                 self.handpad.display('Trying for','GPS Lock','')
                 data_stream.unpack(new_data)
-                if data_stream.mode == 3:
+                if data_stream.mode == 3 and data_stream.lat != 0:
                     print('Geo data:',data_stream.time, data_stream.lon,data_stream.lat,data_stream.alt)
                     date = data_stream.time
                     lat = data_stream.lat

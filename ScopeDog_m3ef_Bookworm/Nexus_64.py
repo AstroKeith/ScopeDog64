@@ -150,8 +150,7 @@ class Nexus:
         format = "%m/%d/%Y %H:%M:%S"
         local_dt = datetime.strptime(dt_str, format)
         new_dt = local_dt + timedelta(hours=local_offset)
-        print("Calculated UTC", new_dt)
-        print("setting pi clock to:", end=" ")
+        print("setting pi clock to calculated UTC:", new_dt)
         os.system('sudo date -u --set "%s"' % new_dt + ".000Z")
         p = self.get(":GW#")
         if p[1] != "T":
