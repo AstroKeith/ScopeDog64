@@ -8,7 +8,7 @@
 	<h3 align="center">ScopeDog.config file</h3><br>
 	
 	<table><tr><td>
-	<zform action='saveSdog.php' method='post'>
+	<form action='saveSdog.php' method='post'>
 	</td><td> </td></tr>
 <?php
 
@@ -251,7 +251,7 @@ echo $html;
 ?>
 <tr><td>
 <INPUT TYPE="submit"  value="Save Config File">
-</td></zform><td> 
+</td></form><td> 
 <!-- 
 <form action="runScopeDog.php" method="post">
 <INPUT type="submit" value="Run ScopeDog">
