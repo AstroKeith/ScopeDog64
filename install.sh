@@ -161,7 +161,7 @@ echo "**************************************************************************
 cd $HOME
 sudo apt-get install -y apache2
 sudo apt-get install -y php8.2
-sudo chmod a+rwx -R /home/scopedog
+sudo chmod -R 777 /home/scopedog
 sudo cp ScopeDog64/ScopeDog_m3ef_Bookworm/www/*.* /var/www/html
 sudo mv /var/www/html/index.html /var/www/html/apacheindex.html
 sudo chmod -R 755 /var/www/html
