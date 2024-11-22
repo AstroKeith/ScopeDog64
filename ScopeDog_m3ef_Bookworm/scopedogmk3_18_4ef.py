@@ -1099,18 +1099,23 @@ def reader():
 
 
 def updateFirmware():
-    filenames = glob.glob("/media/scopedog/*/*_new") # looks for new files on a USB stick
+    filenames = glob.glob("/media/scopedog/*/*_new*") # looks for new files on a USB stick
     if len(filenames) >0:
         print('Found on USB stick: ',filenames)
         try:
             for filename in filenames:
                 print('---------------------------')
                 print(filename)
-                destName = filename[:-3] + "old"
-                print('will create backup on USB as ',destName.split('/')[4])
-                newName = home_path + '/' + filename.split('/')[4][:-4]
-                shutil.copy(newName,destName) # make a safe copy of previous code on the stick.
-                handpad.display('Old file copied','to USB stick','new file next')
+                destName = filename[:-6] + "old.py"
+                newName = home_path + '/' + filename.split('/')[4][:-7] + '.py'
+                destFile = Path(newName)
+                if destFile.is_file():
+                    print('will create backup on USB as ',destName.split('/')[4])
+                    shutil.copy(newName,destName) # make a safe copy of previous code on the stick.
+                    handpad.display('Old file copied','to USB stick','new file next')
+                else:
+                    print('no old file found to back up')
+                    handpad.display('No old file','found','')
                 shutil.copy(filename,newName) # overwrite old file
                 print('New ' + newName + ' successfully written to the ScopeDog')
                 handpad.display('New file copied','to ScopeDog','Please wait')
