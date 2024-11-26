@@ -35,11 +35,13 @@ import re
 from skyfield.api import load, Star
 import skyfield.positionlib
 import skyfield.toposlib
+from skyfield.positionlib import Apparent
+from skyfield.timelib import Timescale
 import numpy as np
 import select
 from pathlib import Path
 import fitsio
-import Location_64
+import Location_lite
 import Coordinates_lite
 import Display_64
 from collections import OrderedDict
@@ -88,6 +90,8 @@ speed = 10
 gotoRa = gotoDec = 0
 addr = ""
 hotspot = False
+
+ts = load.timescale()
 
 try:
     import board
@@ -164,7 +168,7 @@ def scopedog_loop(): # run at 1Hz
             print("RPI  ",nowStr, "  LST",coordinates.dd2dms(lst).strip('+') )
             print("RA:  ",coordinates.dd2dms(scopeRa).strip('+'), "   Dec:  ",coordinates.dd2dms(scopeDec))
             print("           Az         Alt")
-            #print('%s    %3s      %s   %s' % ('Angle',coordinates.dd2dms(scopeAz.degrees).strip('+'),coordinates.dd2dms(scopeAlt.degrees),'degrees'))
+            print('%s    %3s      %s   %s' % ('Angle',coordinates.dd2dms(scopeAz.degrees).strip('+'),coordinates.dd2dms(scopeAlt.degrees),'degrees'))
             #print('%s   %3s      %s   %s' % ('AngleC',coordinates.dd2dms(azCountPos).strip('+'),coordinates.dd2dms(altCountPos),'degrees'))
             print('%s   %2.3f       %2.3f   %s' % ('Motion',az_rate,alt_rate,'"/sec'))
             print('%s     %6.4f      %6.4f' % ('APSA',azAPSAval,altAPSAval))
@@ -488,9 +492,12 @@ def trackInALT(altMotion):
     AltStepper.setEngaged(True)
 
 def calculateGoToSteps():
+    
+    global gotoAlt, gotoAz
     position = skyfield.positionlib.position_of_radec(gotoRa, gotoDec, epoch=ts.now())
-    ra, dec, d = position.radec(ts.J2000)
+    ra, dec, d = position.radec(ts.now())#(ts.J2000)
     gotoAlt, gotoAz, alt_rate, az_rate = (geoloc.get_rate(ra.hours,dec.degrees))
+    print ('goto AltAz',gotoAlt,gotoAz)
     # calculate deltas
     newDeltaAZ = gotoAz.degrees - scopeAz.degrees
     newDeltaALT = gotoAlt.degrees - scopeAlt.degrees
@@ -753,7 +760,7 @@ def solveImage():
                 print("Solve-field Plot found: ", star_name)
                 break
     solvedPos,solved_altaz = applyOffset()
-    ra, dec, d = solvedPos.apparent().radec(coordinates.get_ts().now())
+    ra, dec, d = solvedPos.radec(coordinates.get_ts().now())
     solved_radec = ra.hours, dec.degrees
     arr[0, 1][0] = "Sol: RA " + coordinates.hh2dms(solved_radec[0])
     arr[0, 1][1] = "   Dec " + coordinates.dd2dms(solved_radec[1])
@@ -764,14 +771,18 @@ def solveImage():
 
 def applyOffset():
     x_offset, y_offset, dxstr, dystr = dxdy2pixel(
-        float(param["d_x"]), float(param["d_y"])
-    )
+        float(param["d_x"]), float(param["d_y"]))
     ra, dec = xy2rd(x_offset, y_offset)
-    solved = Star(ra_hours=ra / 15, dec_degrees=dec)  # will set as J2000 as no epoch input
-    solvedPos_scope = (geoloc.get_location().at(coordinates.get_ts().now()).observe(solved))  # now at Jnow and current location
-    solvedAlt,solvedAz,rate1,rate2 = geoloc.get_rate(ra/15,dec)
-    solved_altaz = solvedAlt.degrees,solvedAz.degrees
-    return solvedPos_scope,solved_altaz
+    #t = ts.now()   
+    position = Apparent.from_radec(ra_hours=ra/15,dec_degrees=dec)#,epoch=ts.tt(2000.0))
+    ra,dec,d = position.radec() # this is at J2000
+    scope = Star(ra_hours=ra.hours,dec_degrees=dec.degrees)
+    a = geoloc.get_location().at(coordinates.get_ts().now()).observe(scope).apparent()
+    ra0,dec0,d = a.radec(coordinates.get_ts().now())
+    alt,az,d = a.altaz()
+    solved_altaz = alt.degrees,az.degrees
+    print ('solvedAltAz',alt,az)
+    return a,solved_altaz
 
 def deltaCalc():
     return
@@ -1242,7 +1253,7 @@ def setWifi():
 
 handpad = Display_64.Handpad(version)
 coordinates = Coordinates_lite.Coordinates()
-geoloc = Location_64.Geoloc(handpad, coordinates)
+geoloc = Location_lite.Geoloc(handpad, coordinates)
 geoloc.read()
 
 updateFirmware()
