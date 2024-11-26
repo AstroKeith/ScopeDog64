@@ -61,7 +61,7 @@ calibrate = False
 az_Joy = alt_Joy = False
 home_path = str(Path.home())
 print('homepath',home_path)
-version = "lite_18_5" 
+version = "lite_18_7" 
 x = y = 0  # x, y  define what page the display is showing
 deltaAz = deltaAlt = 0
 increment = [0, 0.1, 5, 1, 1]
