@@ -1,0 +1,3 @@
+Key:initial,goto,move,stop
+AzAccel:600,3800,10000,50000
+AltAccel:600,3800,10000,50000
