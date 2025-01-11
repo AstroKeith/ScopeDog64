@@ -261,7 +261,7 @@ def serveWifi(): # replace with serve WiFi port
                         altCountPos = altStepAngle * int(-altSide) * AltStepper.getPosition()+ cAlt
                         scopeRa,scopeDec = geoloc.altaz2Radec(azCountPos,altCountPos)
                     a = pkt.split('#')
-                    raPacket = coordinates.dd2dms(scopeRa)+'#'
+                    raPacket = coordinates.hh2dms(scopeRa)+'#'
                     decPacket = coordinates.dd2aligndms(scopeDec)+'#'
                     for x in a:
                         if x != '':
