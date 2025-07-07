@@ -1538,7 +1538,7 @@ gn = [
     "",
 ]
 mode = [
-    "Test mode",
+    "Test_mode",
     int(param["Test_mode"]),
     "",
     "flip()",
