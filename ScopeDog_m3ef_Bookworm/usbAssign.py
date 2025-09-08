@@ -19,6 +19,8 @@ class usbAssign:
                 self.usbHandbox = serial_device.device
             elif 'GPS' in str(serial_device.description):
                 self.usbGps = serial_device.device
+            elif 'GNSS' in str(serial_device.description):
+                self.usbGps = serial_device.device
             elif 'USB UART' in str(serial_device.description):
                 self.usbServocat = serial_device.device
             else:
